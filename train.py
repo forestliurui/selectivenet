@@ -3,9 +3,16 @@ import argparse
 from models.catdog_vgg_selectivenet import CatsvsDogVgg as CatsvsDogSelective
 from models.cifar10_vgg_selectivenet import cifar10vgg as cifar10Selective
 from models.svhn_vgg_selectivenet import SvhnVgg as SVHNSelective
+from models.cifar10_vgg_selectivenet_modified import cifar10vgg_modi as cifar10Selective_modi
+from models.cifar10_svgg_selectivenet import cifar10svgg as cifar10Selective_s
 from selectivnet_utils import *
 
-MODELS = {"cifar_10": cifar10Selective, "catsdogs": CatsvsDogSelective, "SVHN": SVHNSelective}
+MODELS = {"cifar_10": cifar10Selective, 
+          "cifar_10_modi": cifar10Selective_modi,
+          "cifar_10_s": cifar10Selective_s, 
+          #"cifar_10_s_modi": cifar10Selective_s_modi,
+          "catsdogs": CatsvsDogSelective, 
+          "SVHN": SVHNSelective}
 
 
 
@@ -26,7 +33,7 @@ coverages = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7]
 
 
 if baseline_name == "none":
-    results = train_profile(model_name, cifar10Selective, coverages, alpha=args.alpha)
+    results = train_profile(model_name, model_cls, coverages, alpha=args.alpha)
 else:
     model_baseline = model_cls(train=to_train("{}.h5".format(baseline_name)),
                                filename="{}.h5".format(baseline_name),

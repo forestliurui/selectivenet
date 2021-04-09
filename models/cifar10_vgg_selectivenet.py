@@ -20,9 +20,10 @@ from selectivnet_utils import *
 
 
 class cifar10vgg:
-    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, baseline=False):
+    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, baseline=False, logfile="training.log"):
         self.lamda = coverage
         self.alpha = alpha
+        self.logfile = logfile
         self.mc_dropout_rate = K.variable(value=0)
         self.num_classes = 10
         self.weight_decay = 0.0005
@@ -246,6 +247,7 @@ class cifar10vgg:
             return learning_rate * (0.5 ** (epoch // lr_drop))
 
         reduce_lr = keras.callbacks.LearningRateScheduler(lr_scheduler)
+        csv_logger = keras.callbacks.CSVLogger(self.logfile, append=True)
 
         # data augmentation
         datagen = ImageDataGenerator(
@@ -271,7 +273,7 @@ class cifar10vgg:
         historytemp = model.fit_generator(my_generator(datagen.flow, self.x_train, self.y_train,
                                                        batch_size=batch_size, k=self.num_classes),
                                           steps_per_epoch=self.x_train.shape[0] // batch_size,
-                                          epochs=maxepoches, callbacks=[reduce_lr],
+                                          epochs=maxepoches, callbacks=[reduce_lr, csv_logger],
                                           validation_data=(self.x_test, [self.y_test, self.y_test[:, :-1]]))
 
 

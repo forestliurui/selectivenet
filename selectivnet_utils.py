@@ -5,6 +5,11 @@ from sklearn.linear_model import LogisticRegression as LR
 from sklearn.metrics import log_loss
 from sklearn.model_selection import train_test_split
 
+def print_to_log(logfile, msg):
+    with open(logfile, "a") as f:
+        f.write(msg)
+        f.write("\n")
+
 
 def to_train(filename):
     checkpoints = os.listdir("checkpoints/")
@@ -38,14 +43,16 @@ def calc_selective_risk(model, regression, calibrated_coverage=None):
     return loss, coverage
 
 
-def train_profile(model_name, model_cls, coverages, model_baseline=None, regression=False, alpha=0.5):
+def train_profile(model_name, model_cls, coverages, model_baseline=None, regression=False, alpha=0.5, logfile='training.log'):
     results = {}
     for coverage_rate in coverages:
-        print("running {}_{}.h5".format(model_name, coverage_rate))
+        #print_to_log(logfile, "running {}_{}.h5".format(model_name, coverage_rate))
         model = model_cls(train=to_train("{}_{}.h5".format(model_name, coverage_rate)),
                           filename="{}_{}.h5".format(model_name, coverage_rate),
                           coverage=coverage_rate,
-                          alpha=alpha)
+                          alpha=alpha,
+                          logfile=logfile
+                          )
 
         loss, coverage = calc_selective_risk(model, regression)
 

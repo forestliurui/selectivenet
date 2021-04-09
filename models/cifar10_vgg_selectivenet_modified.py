@@ -20,11 +20,12 @@ from selectivnet_utils import *
 
 
 class cifar10vgg_modi:
-    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, beta=0.5, baseline=False):
+    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, beta=0.5, baseline=False, logfile="training.log"):
         self.lamda = coverage
         self.target_coverage = coverage
         self.alpha = alpha
         self.beta = beta
+        self.logfile = logfile
         self.mc_dropout_rate = K.variable(value=0)
         self.num_classes = 10
         self.weight_decay = 0.0005
@@ -206,6 +207,34 @@ class cifar10vgg_modi:
         selective_acc = np.mean(np.argmax(pred[covered_idx], 1) == np.argmax(self.y_test[covered_idx], 1))
         return selective_acc
 
+    def _get_confidence_label(self, x_train, y_train, x_test, y_test, strategy="logit"):
+        """
+        The confidence label of an example is 1 if we have high confidence on this example, and 
+        the model should give normal prediction on this example;
+        otherwise, the confidence label is 0
+        """
+       
+        x_shape = x_train.shape[1:]
+        input = Input(shape=x_shape)
+        curr = Flatten()(input) 
+        output = Dense(self.num_classes, activation='softmax', kernel_regularizer=regularizers.l2(self.weight_decay))(curr)
+        
+        confidence_model = Model(inputs=input, outputs=output)
+        confidence_model.compile(optimizer='sgd',
+                      loss='categorical_crossentropy',
+                      metrics=['accuracy'])
+        confidence_model.fit(x_train, y_train, epochs=10)
+        #loss_train = confidence_model.evaluate(x=x_train, y=y_train)
+        #loss_test = confidence_model.evaluate(x=x_test, y=y_test)
+        loss_train = confidence_model.predict(x=x_train)
+        loss_test = confidence_model.predict(x=x_test)
+        confidence_train = np.max(loss_train, 1)
+        confidence_test = np.max(loss_test, 1)
+        
+        con_label_train = confidence_train > 0.3
+        con_label_test = confidence_test > 0.3
+        return con_label_train, con_label_test
+
     def _load_data(self):
 
         # The data, shuffled and split between train and test sets:
@@ -220,10 +249,12 @@ class cifar10vgg_modi:
         self.y_train = keras.utils.to_categorical(y_train, self.num_classes)
         self.y_test = keras.utils.to_categorical(y_test_label, self.num_classes)
 
-        num_train = x_train.shape[0] 
-        num_test = x_test.shape[0]
-        y_train_coverage = np.random.uniform(size=num_train)<self.target_coverage
-        y_test_coverage = np.random.uniform(size=num_test)<self.target_coverage
+        y_train_coverage, y_test_coverage = self._get_confidence_label(self.x_train, self.y_train, self.x_test, self.y_test)
+
+        #num_train = x_train.shape[0] 
+        #num_test = x_test.shape[0]
+        #y_train_coverage = np.random.uniform(size=num_train)<self.target_coverage
+        #y_test_coverage = np.random.uniform(size=num_test)<self.target_coverage
 
         y_train_coverage = y_train_coverage.reshape((-1,1))
         y_test_coverage = y_test_coverage.reshape((-1,1))
@@ -268,6 +299,7 @@ class cifar10vgg_modi:
             return learning_rate * (0.5 ** (epoch // lr_drop))
 
         reduce_lr = keras.callbacks.LearningRateScheduler(lr_scheduler)
+        csv_logger = keras.callbacks.CSVLogger(self.logfile, append=True)
 
         # data augmentation
         datagen = ImageDataGenerator(
@@ -293,7 +325,7 @@ class cifar10vgg_modi:
         historytemp = model.fit_generator(my_generator(datagen.flow, self.x_train, self.y_train,
                                                        batch_size=batch_size, k=self.num_classes),
                                           steps_per_epoch=self.x_train.shape[0] // batch_size,
-                                          epochs=maxepoches, callbacks=[reduce_lr],
+                                          epochs=maxepoches, callbacks=[reduce_lr, csv_logger],
                                           validation_data=(self.x_test, [self.y_test, self.y_test[:, :-1]]))
 
 

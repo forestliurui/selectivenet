@@ -17,15 +17,16 @@ from keras.models import Sequential
 from keras.preprocessing.image import ImageDataGenerator
 
 from selectivnet_utils import *
-
+from cifar10 import *
 
 class cifar10vgg_modi:
-    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, beta=0.5, baseline=False, logfile="training.log"):
+    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, beta=0.5, baseline=False, logfile="training.log", datapath=None):
         self.lamda = coverage
         self.target_coverage = coverage
         self.alpha = alpha
         self.beta = beta
         self.logfile = logfile
+        self.datapath = datapath
         self.mc_dropout_rate = K.variable(value=0)
         self.num_classes = 10
         self.weight_decay = 0.0005
@@ -213,17 +214,32 @@ class cifar10vgg_modi:
         the model should give normal prediction on this example;
         otherwise, the confidence label is 0
         """
-       
-        x_shape = x_train.shape[1:]
-        input = Input(shape=x_shape)
-        curr = Flatten()(input) 
-        output = Dense(self.num_classes, activation='softmax', kernel_regularizer=regularizers.l2(self.weight_decay))(curr)
-        
-        confidence_model = Model(inputs=input, outputs=output)
-        confidence_model.compile(optimizer='sgd',
-                      loss='categorical_crossentropy',
-                      metrics=['accuracy'])
-        confidence_model.fit(x_train, y_train, epochs=10)
+      
+        if strategy == "logit":
+            x_shape = x_train.shape[1:]
+            input = Input(shape=x_shape)
+            curr = Flatten()(input) 
+            output = Dense(self.num_classes, activation='softmax', kernel_regularizer=regularizers.l2(self.weight_decay))(curr)
+            
+            confidence_model = Model(inputs=input, outputs=output)
+            confidence_model.compile(optimizer='sgd',
+                          loss='categorical_crossentropy',
+                          metrics=['accuracy'])
+            confidence_model.fit(x_train, y_train, epochs=10)
+        elif strategy == "rbf":
+            x_shape = x_train.shape[1:]
+            input = Input(shape=x_shape)
+            curr = Flatten()(input) 
+            curr = RBFLayer(10, 0.5)(curr)
+            output = Dense(self.num_classes, activation='softmax', kernel_regularizer=regularizers.l2(self.weight_decay))(curr)
+           
+
+            confidence_model = Model(inputs=input, outputs=output)
+            confidence_model.compile(optimizer='sgd',
+                          loss='categorical_crossentropy',
+                          metrics=['accuracy'])
+            confidence_model.fit(x_train, y_train, epochs=10)
+            
         #loss_train = confidence_model.evaluate(x=x_train, y=y_train)
         #loss_test = confidence_model.evaluate(x=x_test, y=y_test)
         loss_train = confidence_model.predict(x=x_train)
@@ -238,7 +254,7 @@ class cifar10vgg_modi:
     def _load_data(self):
 
         # The data, shuffled and split between train and test sets:
-        (x_train, y_train), (x_test, y_test_label) = cifar10.load_data()
+        (x_train, y_train), (x_test, y_test_label) = load_data(self.datapath)
         x_train = x_train.astype('float32')
         x_test = x_test.astype('float32')
         self.x_train, self.x_test = self.normalize(x_train, x_test)
@@ -249,8 +265,9 @@ class cifar10vgg_modi:
         self.y_train = keras.utils.to_categorical(y_train, self.num_classes)
         self.y_test = keras.utils.to_categorical(y_test_label, self.num_classes)
 
-        y_train_coverage, y_test_coverage = self._get_confidence_label(self.x_train, self.y_train, self.x_test, self.y_test)
-
+        y_train_coverage, y_test_coverage = self._get_confidence_label(
+                                                self.x_train, self.y_train, self.x_test, self.y_test, strategy="logit")
+        
         #num_train = x_train.shape[0] 
         #num_test = x_test.shape[0]
         #y_train_coverage = np.random.uniform(size=num_train)<self.target_coverage
@@ -285,6 +302,16 @@ class cifar10vgg_modi:
             g = K.cast(K.greater(y_pred[:, -1], 0.5), K.floatx())
             return K.mean(g)
 
+        class CustomCallback(keras.callbacks.Callback):
+            def __init__(self):
+                super(CustomCallback, self).__init__()
+                print(dir(self.model))
+                #print(dir(self.model.optimizer))
+
+            def on_train_batch_end(self, batch, logs=None):
+                keys = list(logs.keys())
+                print("...Training: end of batch {}; got log keys: {}".format(batch, keys))
+                #print(dir(self.model))
 
         # training parameters
         batch_size = 128

@@ -356,9 +356,10 @@ class cifar10vgg_modi:
                                           validation_data=(self.x_test, [self.y_test, self.y_test[:, :-1]]))
 
 
-        with open("checkpoints/{}_history.pkl".format(self.filename[:-3]), 'wb') as handle:
-            pickle.dump(historytemp.history, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        #with open("checkpoints/{}_history.pkl".format(self.filename[:-3]), 'wb') as handle:
+        #    pickle.dump(historytemp.history, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        model.save_weights("checkpoints/{}".format(self.filename))
+        #model.save_weights("checkpoints/{}".format(self.filename))
+        print("training finished!")
 
         return model

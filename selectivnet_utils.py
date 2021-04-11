@@ -73,7 +73,7 @@ def calc_selective_risk(model, regression, calibrated_coverage=None):
 def train_profile(model_name, model_cls, coverages, model_baseline=None, regression=False, alpha=0.5, logfile='training.log', datapath=None):
     results = {}
     for coverage_rate in coverages:
-        #print_to_log(logfile, "running {}_{}.h5".format(model_name, coverage_rate))
+        print("running {}_{}.h5".format(model_name, coverage_rate))
         model = model_cls(train=to_train("{}_{}.h5".format(model_name, coverage_rate)),
                           filename="{}_{}.h5".format(model_name, coverage_rate),
                           coverage=coverage_rate,
@@ -83,8 +83,9 @@ def train_profile(model_name, model_cls, coverages, model_baseline=None, regress
                           )
 
         loss, coverage = calc_selective_risk(model, regression)
+        loss_cali, coverage_cali = calc_selective_risk(model, regression, calibrated_coverage=coverage_rate)
 
-        results[coverage] = {"lambda": coverage_rate, "selective_risk": loss}
+        results[coverage] = {"lambda": coverage_rate, "selective_risk": loss, "selective_risk_calibrated": loss_cali}
         if model_baseline is not None:
             if regression:
                 results[coverage]["baseline_risk"] = (model_baseline.selective_risk_at_coverage(coverage))
@@ -93,7 +94,7 @@ def train_profile(model_name, model_cls, coverages, model_baseline=None, regress
 
                 results[coverage]["baseline_risk"] = (1 - model_baseline.selective_risk_at_coverage(coverage))
             results[coverage]["percentage"] = 1 - results[coverage]["selective_risk"] / results[coverage]["baseline_risk"]
-
+        print("results: {}".format(results))
         save_dict("results/{}.json".format(model_name), results)
 
 

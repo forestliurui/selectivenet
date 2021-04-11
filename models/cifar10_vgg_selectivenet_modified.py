@@ -4,7 +4,6 @@ import keras
 import numpy as np
 import pickle
 from keras import backend as K
-from keras import backend as K
 from keras import optimizers
 from keras import regularizers
 from keras.datasets import cifar10
@@ -226,6 +225,8 @@ class cifar10vgg_modi:
                           loss='categorical_crossentropy',
                           metrics=['accuracy'])
             confidence_model.fit(x_train, y_train, epochs=10)
+            loss_train = confidence_model.predict(x=x_train)
+            loss_test = confidence_model.predict(x=x_test)
         elif strategy == "rbf":
             x_shape = x_train.shape[1:]
             input = Input(shape=x_shape)
@@ -239,11 +240,13 @@ class cifar10vgg_modi:
                           loss='categorical_crossentropy',
                           metrics=['accuracy'])
             confidence_model.fit(x_train, y_train, epochs=10)
-            
-        #loss_train = confidence_model.evaluate(x=x_train, y=y_train)
-        #loss_test = confidence_model.evaluate(x=x_test, y=y_test)
-        loss_train = confidence_model.predict(x=x_train)
-        loss_test = confidence_model.predict(x=x_test)
+            loss_train = confidence_model.predict(x=x_train)
+            loss_test = confidence_model.predict(x=x_test)
+        elif strategy == "self":
+            confidence_model = self.model
+            loss_train = confidence_model.predict(x=x_train)[1]
+            loss_test = confidence_model.predict(x=x_test)[1]
+
         confidence_train = np.max(loss_train, 1)
         confidence_test = np.max(loss_test, 1)
         
@@ -322,8 +325,8 @@ class cifar10vgg_modi:
 
         lr_drop = 25
 
-        def lr_scheduler(epoch):
-            return learning_rate * (0.5 ** (epoch // lr_drop))
+        def lr_scheduler(epoch, lr):
+            return lr * (0.5 ** (epoch // lr_drop))
 
         reduce_lr = keras.callbacks.LearningRateScheduler(lr_scheduler)
         csv_logger = keras.callbacks.CSVLogger(self.logfile, append=True)
@@ -348,13 +351,21 @@ class cifar10vgg_modi:
 
         model.compile(loss=[selective_loss, 'categorical_crossentropy'], loss_weights=[self.alpha, 1 - self.alpha],
                       optimizer=sgd, metrics=['accuracy', selective_acc, coverage])
-
-        historytemp = model.fit_generator(my_generator(datagen.flow, self.x_train, self.y_train,
-                                                       batch_size=batch_size, k=self.num_classes),
-                                          steps_per_epoch=self.x_train.shape[0] // batch_size,
-                                          epochs=maxepoches, callbacks=[reduce_lr, csv_logger],
-                                          validation_data=(self.x_test, [self.y_test, self.y_test[:, :-1]]))
-
+      
+        for epoch in range(maxepoches):
+            print("epoch: {}, current lr: {}, iterations: {}".format(epoch, K.get_value(model.optimizer.lr), K.get_value(model.optimizer.iterations)))
+            historytemp = model.fit_generator(my_generator(datagen.flow, self.x_train, self.y_train,
+                                                           batch_size=batch_size, k=self.num_classes),
+                                              steps_per_epoch=self.x_train.shape[0] // batch_size,
+                                              epochs=epoch+1, initial_epoch=epoch, callbacks=[reduce_lr, csv_logger],
+                                              validation_data=(self.x_test, [self.y_test, self.y_test[:, :-1]]))
+            y_train_coverage, y_test_coverage = self._get_confidence_label(
+                                                    self.x_train, self.y_train, self.x_test, self.y_test, strategy="self")
+            print("y_train_coverage mean: {}, y_test_coverage_mean: {}".format(np.mean(y_train_coverage), np.mean(y_test_coverage)))
+            #y_train_coverage = y_train_coverage.reshape((-1,1))
+            #y_test_coverage = y_test_coverage.reshape((-1,1))
+            self.y_train[:,-1] = y_train_coverage
+            self.y_test[:,-1] = y_test_coverage
 
         #with open("checkpoints/{}_history.pkl".format(self.filename[:-3]), 'wb') as handle:
         #    pickle.dump(historytemp.history, handle, protocol=pickle.HIGHEST_PROTOCOL)

@@ -19,13 +19,14 @@ from selectivnet_utils import *
 from cifar10 import *
 
 class cifar10vgg_modi:
-    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, beta=0.5, baseline=False, logfile="training.log", datapath=None):
+    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, beta=0.5, baseline=False, logfile="training.log", datapath=None, target_head=False):
         self.lamda = coverage
         self.target_coverage = coverage
         self.alpha = alpha
         self.beta = beta
         self.logfile = logfile
         self.datapath = datapath
+        self.target_head = target_head # false if not want to use the target head to learn the target coverage 
         self.mc_dropout_rate = K.variable(value=0)
         self.num_classes = 10
         self.weight_decay = 0.0005
@@ -148,8 +149,9 @@ class cifar10vgg_modi:
         selective_output = Concatenate(axis=1, name="selective_head")([curr1, curr2])
 
         # target head (t)
-        target_output = Dense(1, activation='sigmoid')(curr)
-        self.lamda = K.mean(target_output)
+        if self.target_head is True:
+            target_output = Dense(1, activation='sigmoid')(curr)
+            self.lamda = K.mean(target_output)
 
         # auxiliary head (h)
         auxiliary_output = Dense(self.num_classes, activation='softmax', name="classification_head")(curr)

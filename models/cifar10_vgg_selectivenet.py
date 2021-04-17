@@ -244,8 +244,8 @@ class cifar10vgg:
 
         lr_drop = 25
 
-        def lr_scheduler(epoch, lr):
-            return lr * (0.5 ** (epoch // lr_drop))
+        def lr_scheduler(epoch):
+            return learning_rate * (0.5 ** (epoch // lr_drop))
 
         reduce_lr = keras.callbacks.LearningRateScheduler(lr_scheduler)
         csv_logger = keras.callbacks.CSVLogger(self.logfile, append=True)

@@ -22,12 +22,15 @@ from selectivnet_utils import *
 
 
 class SvhnVgg:
-    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, baseline=False):
+    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, baseline=False, logfile="training.log", datapath=None, target_head=False):
         self.lamda = coverage
         self.alpha = alpha
         self.mc_dropout_rate = K.variable(value=0)
         self.num_classes = 10
         self.weight_decay = 0.0005
+        self.logfile = logfile
+        self.datapath= datapath
+        self.target_head = target_head
         self._load_data()
 
         self.x_shape = self.x_train.shape[1:]
@@ -203,13 +206,20 @@ class SvhnVgg:
 
     def _load_data(self):
 
-        mat = spio.loadmat('datasets/train_32x32.mat', squeeze_me=True)
+        if self.datapath is not None:
+            train_file = os.path.join(self.datapath, "train_32x32.mat")
+            test_file = os.path.join(self.datapath, "test_32x32.mat")
+        else:
+            train_file = "datasets/train_32x32.mat"
+            test_file = "datasets/test_32x32.mat"
+
+        mat = spio.loadmat(train_file, squeeze_me=True)
         self.x_train = mat["X"]
         self.y_train = mat["y"]
         self.x_train = np.moveaxis(self.x_train, -1, 0)
         del mat
 
-        mat = spio.loadmat('datasets/test_32x32.mat', squeeze_me=True)
+        mat = spio.loadmat(test_file, squeeze_me=True)
         self.x_test = mat["X"]
         self.y_test = mat["y"]
         del mat

@@ -74,7 +74,7 @@ def train_profile(model_name, model_cls, coverages, model_baseline=None, regress
     results = {}
     for coverage_rate in coverages:
         print("running {}_{}.h5".format(model_name, coverage_rate))
-        model = model_cls(train=to_train("{}_{}.h5".format(model_name, coverage_rate)),
+        model = model_cls(train=True,
                           filename="{}_{}.h5".format(model_name, coverage_rate),
                           coverage=coverage_rate,
                           alpha=alpha,

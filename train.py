@@ -33,7 +33,7 @@ baseline_name = args.baseline
 logfile = args.logfile
 datapath = args.datapath
 
-coverages = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7]
+coverages = [1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7]
 
 
 if baseline_name == "none":

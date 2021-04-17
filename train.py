@@ -27,6 +27,8 @@ parser.add_argument('--datapath', type=str, default=None)
 
 args = parser.parse_args()
 
+print("experiment arguments: {}".format(args))
+
 model_cls = MODELS[args.dataset]
 model_name = args.model_name
 baseline_name = args.baseline

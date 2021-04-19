@@ -20,16 +20,21 @@ from selectivnet_utils import *
 from cifar10 import *
 
 class cifar10vgg:
-    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, baseline=False, logfile="training.log", datapath=None):
-        self.lamda = coverage
+    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, baseline=False, logfile="training.log", datapath=None, **kwargs):
+        self.target_coverage = coverage
         self.alpha = alpha
         self.logfile = logfile
         self.datapath = datapath
         self.mc_dropout_rate = K.variable(value=0)
         self.num_classes = 10
         self.weight_decay = 0.0005
-        self._load_data()
+        if "lamda" in kwargs:
+            self.lamda = kwargs["lamda"]
+        else:
+            self.lamda = 32
+        print("model args: {}".format(kwargs))
 
+        self._load_data()
         self.x_shape = self.x_train.shape[1:]
         self.filename = filename
 
@@ -213,13 +218,12 @@ class cifar10vgg:
         self.y_test = keras.utils.to_categorical(y_test_label, self.num_classes + 1)
 
     def train(self, model):
-        c = self.lamda
-        lamda = 32
+        c = self.target_coverage
 
         def selective_loss(y_true, y_pred):
             loss = K.categorical_crossentropy(
                 K.repeat_elements(y_pred[:, -1:], self.num_classes, axis=1) * y_true[:, :-1],
-                y_pred[:, :-1]) + lamda * K.maximum(-K.mean(y_pred[:, -1]) + c, 0) ** 2
+                y_pred[:, :-1]) + self.lamda * K.maximum(-K.mean(y_pred[:, -1]) + c, 0) ** 2
             return loss
 
         def selective_acc(y_true, y_pred):

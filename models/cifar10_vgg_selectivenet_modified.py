@@ -19,19 +19,27 @@ from selectivnet_utils import *
 from cifar10 import *
 
 class cifar10vgg_modi:
-    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, beta=0.5, baseline=False, logfile="training.log", datapath=None, target_head=False):
-        self.lamda = coverage
+    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, baseline=False, logfile="training.log", datapath=None, target_head=False, **kwargs):
         self.target_coverage = coverage
         self.alpha = alpha
-        self.beta = beta
+        if "beta" in kwargs:
+            self.beta = kwargs["beta"]
+        else:
+            self.beta = 1
+        if "lamda" in kwargs:
+            self.lamda = kwargs["lamda"]
+        else:
+            self.lamda = 32
         self.logfile = logfile
         self.datapath = datapath
         self.target_head = target_head # false if not want to use the target head to learn the target coverage 
         self.mc_dropout_rate = K.variable(value=0)
         self.num_classes = 10
         self.weight_decay = 0.0005
-        self._load_data()
 
+        print("model args: {}".format(kwargs))
+
+        self._load_data()
         self.x_shape = self.x_train.shape[1:]
         self.filename = filename
 
@@ -151,7 +159,7 @@ class cifar10vgg_modi:
         # target head (t)
         if self.target_head is True:
             target_output = Dense(1, activation='sigmoid')(curr)
-            self.lamda = K.mean(target_output)
+            self.target_coverage = K.mean(target_output)
 
         # auxiliary head (h)
         auxiliary_output = Dense(self.num_classes, activation='softmax', name="classification_head")(curr)
@@ -284,16 +292,15 @@ class cifar10vgg_modi:
         self.y_test = np.concatenate((self.y_test, y_test_coverage), axis=1)
 
     def train(self, model):
-        c = self.lamda
-        lamda = 32
+        c = self.target_coverage
 
         def selective_loss(y_true, y_pred):
             s_loss = K.categorical_crossentropy(
                 K.repeat_elements(y_pred[:, -1:], self.num_classes, axis=1) * y_true[:, :-1],
-                y_pred[:, :-1]) + lamda * K.maximum(-K.mean(y_pred[:, -1]) + c, 0) ** 2
+                y_pred[:, :-1]) + self.lamda * K.maximum(-K.mean(y_pred[:, -1]) + c, 0) ** 2
             
             c_loss = K.binary_crossentropy(y_true[:,-1], y_pred[:,-1])
-            loss = self.beta*s_loss + (1-self.beta) * c_loss
+            loss = s_loss + self.beta * c_loss
             return loss
 
         def selective_acc(y_true, y_pred):

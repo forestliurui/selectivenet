@@ -22,6 +22,8 @@ parser.add_argument('--dataset', type=str, default='cifar_10')
 parser.add_argument('--model_name', type=str, default='test')
 parser.add_argument('--baseline', type=str, default='none')
 parser.add_argument('--alpha', type=float, default=0.5)
+parser.add_argument('--beta', type=float, default=1)
+parser.add_argument('--lamda', type=float, default=32)
 parser.add_argument('--logfile', type=str, default='training.log')
 parser.add_argument('--datapath', type=str, default=None)
 
@@ -39,9 +41,9 @@ coverages = [1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7]
 
 
 if baseline_name == "none":
-    results = train_profile(model_name, model_cls, coverages, alpha=args.alpha, logfile=logfile, datapath=datapath)
+    results = train_profile(model_name, model_cls, coverages, alpha=args.alpha, beta=args.beta, lamda=args.lamda, logfile=logfile, datapath=datapath)
 else:
     model_baseline = model_cls(train=to_train("{}.h5".format(baseline_name)),
                                filename="{}.h5".format(baseline_name),
                                baseline=True)
-    results = train_profile(model_name, model_cls, coverages, model_baseline=model_baseline, alpha=args.alpha, logfile=logfile, datapath=datapath)
+    results = train_profile(model_name, model_cls, coverages, model_baseline=model_baseline, alpha=args.alpha, beta=args.beta, logfile=logfile, datapath=datapath)

@@ -70,7 +70,7 @@ def calc_selective_risk(model, regression, calibrated_coverage=None):
     return loss, coverage
 
 
-def train_profile(model_name, model_cls, coverages, model_baseline=None, regression=False, alpha=0.5, beta=1, lamda=32, logfile='training.log', datapath=None):
+def train_profile(model_name, model_cls, coverages, model_baseline=None, regression=False, alpha=0.5, beta=1, lamda=32, random_percent=-1, logfile='training.log', datapath=None):
     results = {}
     for coverage_rate in coverages:
         print("running {}_{}.h5".format(model_name, coverage_rate))
@@ -80,6 +80,7 @@ def train_profile(model_name, model_cls, coverages, model_baseline=None, regress
                           alpha=alpha,
                           beta=beta,
                           lamda = lamda,
+                          random_percent = random_percent,
                           logfile=logfile,
                           datapath=datapath
                           )

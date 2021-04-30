@@ -259,9 +259,21 @@ class cifar10vgg_modi:
 
         confidence_train = np.max(loss_train, 1)
         confidence_test = np.max(loss_test, 1)
-        
-        con_label_train = confidence_train > 0.3
-        con_label_test = confidence_test > 0.3
+       
+        train_size = x_train.shape[0]
+        test_size = x_test.shape[0]
+        #print("confidence_train: {}".format(confidence_train))
+        #print("confidence_test: {}".format(confidence_test))
+        confidence_train_portion = int(self.target_coverage*train_size)
+        confidence_test_portion = int(self.target_coverage*test_size)
+        confidence_train_thresh = np.partition(confidence_train, -confidence_train_portion)[-confidence_train_portion] 
+        confidence_test_thresh = np.partition(confidence_test, -confidence_test_portion)[-confidence_test_portion] 
+     
+        #print("confidence_train_thresh: {}".format(confidence_train_thresh))
+        #print("confidence_test_thresh: {}".format(confidence_test_thresh))
+
+        con_label_train = confidence_train > confidence_train_thresh
+        con_label_test = confidence_test > confidence_test_thresh
         return con_label_train, con_label_test
 
     def _load_data(self):
@@ -281,6 +293,7 @@ class cifar10vgg_modi:
         y_train_coverage, y_test_coverage = self._get_confidence_label(
                                                 self.x_train, self.y_train, self.x_test, self.y_test, strategy="logit")
         
+        print("y_train_coverage mean: {}, y_test_coverage_mean: {}".format(np.mean(y_train_coverage), np.mean(y_test_coverage)))
         #num_train = x_train.shape[0] 
         #num_test = x_test.shape[0]
         #y_train_coverage = np.random.uniform(size=num_train)<self.target_coverage

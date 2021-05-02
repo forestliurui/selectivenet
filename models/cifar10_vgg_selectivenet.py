@@ -32,6 +32,10 @@ class cifar10vgg:
             self.lamda = kwargs["lamda"]
         else:
             self.lamda = 32
+        if "random_percent" in kwargs:
+            self.random_percent = kwargs["random_percent"]
+        else:
+            self.random_percent = -1
         print("model args: {}".format(kwargs))
 
         self._load_data()
@@ -206,6 +210,29 @@ class cifar10vgg:
         selective_acc = np.mean(np.argmax(pred[covered_idx], 1) == np.argmax(self.y_test[covered_idx], 1))
         return selective_acc
 
+    def randomize(self, x_train, y_train, x_test, y_test):
+        num_train = x_train.shape[0]
+        num_test = x_test.shape[0]
+        random_idx_train = np.unique(np.random.randint(num_train, size=int(num_train*self.random_percent/100))) 
+        random_idx_test = np.unique(np.random.randint(num_test, size=int(num_test*self.random_percent/100))) 
+
+        y_train_flatten = np.argmax(y_train, axis=1)
+        y_test_flatten = np.argmax(y_test, axis=1)
+        
+        y_train_random = np.random.randint(self.num_classes, size=len(random_idx_train))
+        y_test_random = np.random.randint(self.num_classes, size=len(random_idx_test))
+
+        self.y_train = keras.utils.to_categorical(y_train_flatten, self.num_classes + 1)
+        self.y_test = keras.utils.to_categorical(y_test_flatten, self.num_classes + 1)
+
+        con_label_train = np.ones(num_train)
+        con_label_test = np.ones(num_test)
+
+        con_label_train[random_idx_train] = 0
+        con_label_test[random_idx_test] = 0
+
+        print("y_train_coverage mean: {}, y_test_coverage_mean: {}".format(np.mean(con_label_train), np.mean(con_label_test)))
+
     def _load_data(self):
 
         # The data, shuffled and split between train and test sets:
@@ -216,6 +243,9 @@ class cifar10vgg:
 
         self.y_train = keras.utils.to_categorical(y_train, self.num_classes + 1)
         self.y_test = keras.utils.to_categorical(y_test_label, self.num_classes + 1)
+
+        if self.random_percent > 0:
+            self.randomize(self.x_train, self.y_train, self.x_test, self.y_test)
 
     def train(self, model):
         c = self.target_coverage

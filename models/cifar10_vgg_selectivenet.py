@@ -222,6 +222,9 @@ class cifar10vgg:
         y_train_random = np.random.randint(self.num_classes, size=len(random_idx_train))
         y_test_random = np.random.randint(self.num_classes, size=len(random_idx_test))
 
+        y_train_flatten[random_idx_train] = y_train_random
+        y_test_flatten[random_idx_test] = y_test_random
+
         self.y_train = keras.utils.to_categorical(y_train_flatten, self.num_classes + 1)
         self.y_test = keras.utils.to_categorical(y_test_flatten, self.num_classes + 1)
 

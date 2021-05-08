@@ -36,6 +36,10 @@ class cifar10vgg:
             self.random_percent = kwargs["random_percent"]
         else:
             self.random_percent = -1
+        if "random_strategy" in kwargs:
+            self.random_strategy = kwargs["random_strategy"]
+        else:
+            self.random_strategy = "feature"
         print("model args: {}".format(kwargs))
 
         self._load_data()
@@ -210,7 +214,8 @@ class cifar10vgg:
         selective_acc = np.mean(np.argmax(pred[covered_idx], 1) == np.argmax(self.y_test[covered_idx], 1))
         return selective_acc
 
-    def randomize(self, x_train, y_train, x_test, y_test):
+    def randomize_label(self, x_train, y_train, x_test, y_test):
+        print("run randomize_label")
         num_train = x_train.shape[0]
         num_test = x_test.shape[0]
         random_idx_train = np.unique(np.random.randint(num_train, size=int(num_train*self.random_percent/100))) 
@@ -235,9 +240,31 @@ class cifar10vgg:
         con_label_test[random_idx_test] = 0
 
         print("y_train_coverage mean: {}, y_test_coverage_mean: {}".format(np.mean(con_label_train), np.mean(con_label_test)))
+        return con_label_train, con_label_test
+
+    def randomize_feature(self, x_train, y_train, x_test, y_test):
+        print("run randomize_feature")
+        num_train = x_train.shape[0]
+        num_test = x_test.shape[0]
+        random_idx_train = np.unique(np.random.randint(num_train, size=int(num_train*self.random_percent/100))) 
+        random_idx_test = np.unique(np.random.randint(num_test, size=int(num_test*self.random_percent/100))) 
+
+        for r_idx in random_idx_train:
+            self.x_train[r_idx,:] = np.random.permutation(self.x_train[r_idx,:])
+
+        for r_idx in random_idx_test:
+            self.x_test[r_idx,:] = np.random.permutation(self.x_test[r_idx,:])
+
+        con_label_train = np.ones(num_train)
+        con_label_test = np.ones(num_test)
+
+        con_label_train[random_idx_train] = 0
+        con_label_test[random_idx_test] = 0
+
+        print("y_train_coverage mean: {}, y_test_coverage_mean: {}".format(np.mean(con_label_train), np.mean(con_label_test)))
+        return con_label_train, con_label_test
 
     def _load_data(self):
-
         # The data, shuffled and split between train and test sets:
         (x_train, y_train), (x_test, y_test_label) = load_data(self.datapath)
         x_train = x_train.astype('float32')
@@ -248,7 +275,16 @@ class cifar10vgg:
         self.y_test = keras.utils.to_categorical(y_test_label, self.num_classes + 1)
 
         if self.random_percent > 0:
-            self.randomize(self.x_train, self.y_train, self.x_test, self.y_test)
+            if self.random_strategy == "label":
+                randomize_fn = self.randomize_label
+            elif self.random_strategy == "feature":
+                randomize_fn = self.randomize_feature
+            else:
+                raise ValueError("random strategy not supported: {}".format(self.random_strategy))
+            y_train_coverage, y_test_coverage = randomize_fn(self.x_train, self.y_train, self.x_test, self.y_test)
+
+            self.y_train[:,-1] = y_train_coverage
+            self.y_test[:,-1] = y_test_coverage
 
     def train(self, model):
         c = self.target_coverage
@@ -270,7 +306,15 @@ class cifar10vgg:
             g = K.cast(K.greater(y_pred[:, -1], 0.5), K.floatx())
             return K.mean(g)
 
+        def confidence_acc(y_true, y_pred):
+            g_pred = K.cast(K.greater(y_pred[:, -1], 0.5), K.floatx())
+            g_true = K.cast(y_true[:, -1], K.floatx())
+            temp1 = K.cast(K.equal(g_true, g_pred), K.floatx())
+            return K.mean(temp1)
 
+        def confidence_loss(y_true, y_pred):
+            c_loss = K.binary_crossentropy(y_true[:,-1], y_pred[:,-1])
+            return c_loss
 
         # training parameters
         batch_size = 128
@@ -306,7 +350,7 @@ class cifar10vgg:
         sgd = optimizers.SGD(lr=learning_rate, decay=lr_decay, momentum=0.9, nesterov=True)
 
         model.compile(loss=[selective_loss, 'categorical_crossentropy'], loss_weights=[self.alpha, 1 - self.alpha],
-                      optimizer=sgd, metrics=['accuracy', selective_acc, coverage])
+                      optimizer=sgd, metrics=['accuracy', selective_acc, coverage, confidence_loss, confidence_acc])
 
         historytemp = model.fit_generator(my_generator(datagen.flow, self.x_train, self.y_train,
                                                        batch_size=batch_size, k=self.num_classes),

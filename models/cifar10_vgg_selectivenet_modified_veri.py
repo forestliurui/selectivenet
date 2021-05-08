@@ -34,6 +34,10 @@ class cifar10vgg_modi_veri:
             self.random_percent = kwargs["random_percent"]
         else:
             self.random_percent = -1
+        if "random_strategy" in kwargs:
+            self.random_strategy = kwargs["random_strategy"]
+        else:
+            self.random_strategy = "feature"
         self.logfile = logfile
         self.datapath = datapath
         self.target_head = target_head # false if not want to use the target head to learn the target coverage 
@@ -229,6 +233,7 @@ class cifar10vgg_modi_veri:
         """
       
         if strategy == "logit":
+            print("run confidence label strategy: logit")
             x_shape = x_train.shape[1:]
             input = Input(shape=x_shape)
             curr = Flatten()(input) 
@@ -242,6 +247,7 @@ class cifar10vgg_modi_veri:
             loss_train = confidence_model.predict(x=x_train)
             loss_test = confidence_model.predict(x=x_test)
         elif strategy == "rbf":
+            print("run confidence label strategy: rbf")
             x_shape = x_train.shape[1:]
             input = Input(shape=x_shape)
             curr = Flatten()(input) 
@@ -257,11 +263,13 @@ class cifar10vgg_modi_veri:
             loss_train = confidence_model.predict(x=x_train)
             loss_test = confidence_model.predict(x=x_test)
         elif strategy == "self":
+            print("run confidence label strategy: self")
             confidence_model = self.model
             loss_train = confidence_model.predict(x=x_train)[1]
             loss_test = confidence_model.predict(x=x_test)[1]
 
-        elif strategy == "randomize":
+        elif strategy == "randomize_label":
+            print("run confidence label strategy: randomize_label")
             num_train = x_train.shape[0]
             num_test = x_test.shape[0]
             random_idx_train = np.unique(np.random.randint(num_train, size=int(num_train*self.random_percent/100))) 
@@ -287,6 +295,26 @@ class cifar10vgg_modi_veri:
 
             return con_label_train, con_label_test 
 
+        elif strategy == "randomize_feature":
+            print("run confidence label strategy: randomize_feature")
+            num_train = x_train.shape[0]
+            num_test = x_test.shape[0]
+            random_idx_train = np.unique(np.random.randint(num_train, size=int(num_train*self.random_percent/100))) 
+            random_idx_test = np.unique(np.random.randint(num_test, size=int(num_test*self.random_percent/100))) 
+
+            for r_idx in random_idx_train:
+                self.x_train[r_idx,:] = np.random.permutation(self.x_train[r_idx,:])
+
+            for r_idx in random_idx_test:
+                self.x_test[r_idx,:] = np.random.permutation(self.x_test[r_idx,:])
+
+            con_label_train = np.ones(num_train)
+            con_label_test = np.ones(num_test)
+
+            con_label_train[random_idx_train] = 0
+            con_label_test[random_idx_test] = 0
+
+            return con_label_train, con_label_test 
 
         confidence_train = np.max(loss_train, 1)
         confidence_test = np.max(loss_test, 1)
@@ -309,8 +337,15 @@ class cifar10vgg_modi_veri:
         self.y_train = keras.utils.to_categorical(y_train, self.num_classes)
         self.y_test = keras.utils.to_categorical(y_test_label, self.num_classes)
 
+        if self.random_strategy == "label":
+            strategy = "randomize_label"
+        elif self.random_strategy == "feature":
+            strategy = "randomize_feature"
+        else:
+            strategy = "logit"
+
         y_train_coverage, y_test_coverage = self._get_confidence_label(
-                                                self.x_train, self.y_train, self.x_test, self.y_test, strategy="randomize")
+                                                self.x_train, self.y_train, self.x_test, self.y_test, strategy=strategy)
         print("y_train_coverage mean: {}, y_test_coverage_mean: {}".format(np.mean(y_train_coverage), np.mean(y_test_coverage)))
         
         #num_train = x_train.shape[0] 
@@ -345,6 +380,16 @@ class cifar10vgg_modi_veri:
         def coverage(y_true, y_pred):
             g = K.cast(K.greater(y_pred[:, -1], 0.5), K.floatx())
             return K.mean(g)
+
+        def confidence_acc(y_true, y_pred):
+            g_pred = K.cast(K.greater(y_pred[:, -1], 0.5), K.floatx())
+            g_true = K.cast(y_true[:, -1], K.floatx())
+            temp1 = K.cast(K.equal(g_true, g_pred), K.floatx())
+            return K.mean(temp1)
+
+        def confidence_loss(y_true, y_pred):
+            c_loss = K.binary_crossentropy(y_true[:,-1], y_pred[:,-1])
+            return c_loss
 
         class CustomCallback(keras.callbacks.Callback):
             def __init__(self):
@@ -391,7 +436,7 @@ class cifar10vgg_modi_veri:
         sgd = optimizers.SGD(lr=learning_rate, decay=lr_decay, momentum=0.9, nesterov=True)
 
         model.compile(loss=[selective_loss, 'categorical_crossentropy'], loss_weights=[self.alpha, 1 - self.alpha],
-                      optimizer=sgd, metrics=['accuracy', selective_acc, coverage])
+                      optimizer=sgd, metrics=['accuracy', selective_acc, coverage, confidence_loss, confidence_acc])
       
         for epoch in range(maxepoches):
             print("epoch: {}, current lr: {}, iterations: {}".format(epoch, K.get_value(model.optimizer.lr), K.get_value(model.optimizer.iterations)))

@@ -264,6 +264,34 @@ class cifar10vgg:
         print("y_train_coverage mean: {}, y_test_coverage_mean: {}".format(np.mean(con_label_train), np.mean(con_label_test)))
         return con_label_train, con_label_test
 
+    def randomize_feature_gaussian(self, x_train, y_train, x_test, y_test):
+        print("run randomize_feature_gaussian")
+        num_train = x_train.shape[0]
+        num_test = x_test.shape[0]
+        random_idx_train = np.unique(np.random.randint(num_train, size=int(num_train*self.random_percent/100))) 
+        random_idx_test = np.unique(np.random.randint(num_test, size=int(num_test*self.random_percent/100))) 
+
+        for r_idx in random_idx_train:
+            mean = np.mean(self.x_train[r_idx,:])
+            std = np.std(self.x_train[r_idx,:])
+            shape = self.x_train[r_idx,:].shape
+            self.x_train[r_idx,:] += np.random.normal(mean, std, shape)
+
+        for r_idx in random_idx_test:
+            mean = np.mean(self.x_test[r_idx,:])
+            std = np.std(self.x_test[r_idx,:])
+            shape = self.x_test[r_idx,:].shape
+            self.x_test[r_idx,:] += np.random.normal(mean, std, shape)
+
+        con_label_train = np.ones(num_train)
+        con_label_test = np.ones(num_test)
+
+        con_label_train[random_idx_train] = 0
+        con_label_test[random_idx_test] = 0
+
+        print("y_train_coverage mean: {}, y_test_coverage_mean: {}".format(np.mean(con_label_train), np.mean(con_label_test)))
+        return con_label_train, con_label_test
+
     def _load_data(self):
         # The data, shuffled and split between train and test sets:
         (x_train, y_train), (x_test, y_test_label) = load_data(self.datapath)
@@ -279,6 +307,8 @@ class cifar10vgg:
                 randomize_fn = self.randomize_label
             elif self.random_strategy == "feature":
                 randomize_fn = self.randomize_feature
+            elif self.random_strategy == "feature_gaussian":
+                randomize_fn = self.randomize_feature_gaussian
             else:
                 raise ValueError("random strategy not supported: {}".format(self.random_strategy))
             y_train_coverage, y_test_coverage = randomize_fn(self.x_train, self.y_train, self.x_test, self.y_test)

@@ -316,6 +316,33 @@ class cifar10vgg_modi_veri:
 
             return con_label_train, con_label_test 
 
+        elif strategy == "randomize_feature_gaussian":
+            print("run confidence label strategy: randomize_feature_gaussian")
+            num_train = x_train.shape[0]
+            num_test = x_test.shape[0]
+            random_idx_train = np.unique(np.random.randint(num_train, size=int(num_train*self.random_percent/100))) 
+            random_idx_test = np.unique(np.random.randint(num_test, size=int(num_test*self.random_percent/100))) 
+
+            for r_idx in random_idx_train:
+                mean = np.mean(self.x_train[r_idx,:])
+                std = np.std(self.x_train[r_idx,:])
+                shape = self.x_train[r_idx,:].shape
+                self.x_train[r_idx,:] += np.random.normal(mean, std, shape)
+
+            for r_idx in random_idx_test:
+                mean = np.mean(self.x_test[r_idx,:])
+                std = np.std(self.x_test[r_idx,:])
+                shape = self.x_test[r_idx,:].shape
+                self.x_test[r_idx,:] += np.random.normal(mean, std, shape)
+
+            con_label_train = np.ones(num_train)
+            con_label_test = np.ones(num_test)
+
+            con_label_train[random_idx_train] = 0
+            con_label_test[random_idx_test] = 0
+
+            return con_label_train, con_label_test 
+
         confidence_train = np.max(loss_train, 1)
         confidence_test = np.max(loss_test, 1)
         
@@ -341,6 +368,8 @@ class cifar10vgg_modi_veri:
             strategy = "randomize_label"
         elif self.random_strategy == "feature":
             strategy = "randomize_feature"
+        elif self.random_strategy == "feature_gaussian":
+            strategy = "randomize_feature_gaussian"
         else:
             strategy = "logit"
 

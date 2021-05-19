@@ -348,6 +348,7 @@ class cifar10vgg_modi_veri:
                                    "x_test": self.x_test,
                                    "y_test": y_test_baseline}
 
+            print("start the baseline model for confidence labels")
             self.baseline = cifar10vgg(train=True,
                           filename="{}_{}.h5".format("cifar10vgg", self.target_coverage),
                           coverage=self.target_coverage,
@@ -360,6 +361,7 @@ class cifar10vgg_modi_veri:
                           datapath=self.datapath,
                           input_data = input_data_baseline, 
                           ) 
+            print("finished the baseline model for confidence labels")
 
             selective_loss_train, aux_loss_train = self.baseline.predict(self.x_train)
             selective_loss_test, aux_loss_test = self.baseline.predict(self.x_test)
@@ -433,6 +435,7 @@ class cifar10vgg_modi_veri:
                                    "x_test": self.x_test,
                                    "y_test": y_test_baseline}
 
+            print("start the baseline model for confidence labels")
             self.baseline = cifar10vgg(train=True,
                           filename="{}_{}.h5".format("cifar10vgg", self.target_coverage),
                           coverage=self.target_coverage,
@@ -445,6 +448,7 @@ class cifar10vgg_modi_veri:
                           datapath=self.datapath,
                           input_data = input_data_baseline, 
                           ) 
+            print("finished the baseline model for confidence labels")
 
             selective_loss_train, aux_loss_train = self.baseline.predict(self.x_train)
             selective_loss_test, aux_loss_test = self.baseline.predict(self.x_test)

@@ -40,9 +40,26 @@ class cifar10vgg:
             self.random_strategy = kwargs["random_strategy"]
         else:
             self.random_strategy = "feature"
+        if "maxepoches" in kwargs:
+            self.maxepoches = kwargs["maxepoches"]
+        else:
+            self.maxepoches = None
+        if "input_data" in kwargs:
+            self.input_data = kwargs["input_data"]
+        else:
+            self.input_data = None
         print("model args: {}".format(kwargs))
 
-        self._load_data()
+        if self.input_data is None:
+            print("use loaded data")
+            self._load_data()
+        else:
+            print("use input data from argument")
+            self.x_train = self.input_data["x_train"] 
+            self.y_train = self.input_data["y_train"] 
+            self.x_test = self.input_data["x_test"] 
+            self.y_test = self.input_data["y_test"]
+
         self.x_shape = self.x_train.shape[1:]
         self.filename = filename
 
@@ -348,7 +365,10 @@ class cifar10vgg:
 
         # training parameters
         batch_size = 128
-        maxepoches = 300
+        if self.maxepoches is None:
+            maxepoches = 300
+        else:
+            maxepoches = self.maxepoches
         learning_rate = 0.1
 
         lr_decay = 1e-6

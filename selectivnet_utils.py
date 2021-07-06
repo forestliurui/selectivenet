@@ -70,13 +70,14 @@ def calc_selective_risk(model, regression, calibrated_coverage=None):
     return loss, coverage
 
 
-def train_profile(model_name, model_cls, coverages, model_baseline=None, regression=False, alpha=0.5, beta=1, lamda=32, random_percent=-1, random_strategy='feature', logfile='training.log', datapath=None):
+def train_profile(exp_name, model_cls, coverages, dataset=None, model_baseline=None, regression=False, alpha=0.5, beta=1, lamda=32, random_percent=-1, random_strategy='feature', logfile='training.log', datapath=None):
     results = {}
     for coverage_rate in coverages:
-        print("running {}_{}.h5".format(model_name, coverage_rate))
+        print("running {}_{}.h5".format(exp_name, coverage_rate))
         model = model_cls(train=True,
-                          filename="{}_{}.h5".format(model_name, coverage_rate),
+                          filename="{}_{}.h5".format(exp_name, coverage_rate),
                           coverage=coverage_rate,
+                          dataset=dataset,
                           alpha=alpha,
                           beta=beta,
                           lamda = lamda,
@@ -99,14 +100,14 @@ def train_profile(model_name, model_cls, coverages, model_baseline=None, regress
                 results[coverage]["baseline_risk"] = (1 - model_baseline.selective_risk_at_coverage(coverage))
             results[coverage]["percentage"] = 1 - results[coverage]["selective_risk"] / results[coverage]["baseline_risk"]
         print("results: {}".format(results))
-        save_dict("results/{}.json".format(model_name), results)
+        save_dict("results/{}.json".format(exp_name), results)
 
 
-def post_calibration(model_name, model_cls, lamda, calibrated_coverage=None, model_baseline=None, regression=False):
+def post_calibration(exp_name, model_cls, lamda, calibrated_coverage=None, model_baseline=None, regression=False):
     results = {}
-    print("calibrating {}_{}.h5".format(model_name, lamda))
-    model = model_cls(train=to_train("{}_{}.h5".format(model_name, lamda)),
-                      filename="{}_{}.h5".format(model_name, lamda), coverage=lamda)
+    print("calibrating {}_{}.h5".format(exp_name, lamda))
+    model = model_cls(train=to_train("{}_{}.h5".format(exp_name, lamda)),
+                      filename="{}_{}.h5".format(exp_name, lamda), coverage=lamda)
     loss, coverage = calc_selective_risk(model, regression, calibrated_coverage)
 
     results[coverage]={"lambda":lamda, "selective_risk":loss}

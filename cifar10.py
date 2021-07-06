@@ -46,7 +46,7 @@ def load_data(datapath=None):
         (integers in range 0-9) each with shape (num_samples, 1).
   """
   if datapath is None:
-      print("try to download data from Internet")
+      print("try to download cifar10 data from Internet")
       dirname = 'cifar-10-batches-py'
       origin = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
       path = get_file(
@@ -56,7 +56,7 @@ def load_data(datapath=None):
           file_hash=
           '6d958be074577803d12ecdefd02955f39262c83c16fe9348329d7fe0b5c001ce')
   else:
-      print("try to read data from {}".format(datapath))
+      print("try to read cifar10 data from {}".format(datapath))
       path = datapath
 
   num_train_samples = 50000

@@ -17,7 +17,8 @@ from keras.models import Sequential
 from keras.preprocessing.image import ImageDataGenerator
 
 from selectivnet_utils import *
-from cifar10 import *
+import cifar10
+import cifar100
 
 class cifar10vgg:
     def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, baseline=False, logfile="training.log", datapath=None, **kwargs):
@@ -26,7 +27,14 @@ class cifar10vgg:
         self.logfile = logfile
         self.datapath = datapath
         self.mc_dropout_rate = K.variable(value=0)
-        self.num_classes = 10
+        if "dataset" in kwargs:
+            self.dataset = kwargs["dataset"]
+            if self.dataset == "cifar10":
+                self.num_classes = 10
+            elif self.dataset == "cifar100":
+                self.num_classes = 100
+        else:
+            self.num_classes = 10
         self.weight_decay = 0.0005
         if "lamda" in kwargs:
             self.lamda = kwargs["lamda"]
@@ -311,7 +319,12 @@ class cifar10vgg:
 
     def _load_data(self):
         # The data, shuffled and split between train and test sets:
-        (x_train, y_train), (x_test, y_test_label) = load_data(self.datapath)
+        if self.dataset == "cifar10":
+            load_data = cifar10.load_data
+        elif self.dataset == "cifar100":
+            load_data = cifar100.load_data
+           
+        (x_train, y_train), (x_test, y_test_label) = load_data(datapath=self.datapath)
         x_train = x_train.astype('float32')
         x_test = x_test.astype('float32')
         self.x_train, self.x_test = self.normalize(x_train, x_test)

@@ -36,6 +36,7 @@ parser.add_argument('--beta', type=float, default=1)
 parser.add_argument('--lamda', type=float, default=32)
 parser.add_argument('--random_percent', type=int, default=-1)
 parser.add_argument('--random_strategy', type=str, default='feature')
+parser.add_argument('--curriculum_strategy', type=str, default='curriculum')
 parser.add_argument('--logfile', type=str, default='training.log')
 parser.add_argument('--datapath', type=str, default=None)
 parser.add_argument('--repeats', type=int, default=1)
@@ -57,7 +58,7 @@ coverages = [1, 0.95, 0.9, 0.85, 0.8, 0.75, 0.7]
 for repeat in range(args.repeats):
     print("====================repeat {}==============".format(repeat))
     if baseline_name == "none":
-        results = train_profile(exp_name, model_cls, coverages, dataset=args.dataset, alpha=args.alpha, beta=args.beta, lamda=args.lamda, random_percent=random_percent, random_strategy=random_strategy, logfile=logfile, datapath=datapath)
+        results = train_profile(exp_name, model_cls, coverages, dataset=args.dataset, alpha=args.alpha, beta=args.beta, lamda=args.lamda, random_percent=random_percent, random_strategy=random_strategy, logfile=logfile, datapath=datapath, args=args)
     else:
         model_baseline = model_cls(train=to_train("{}.h5".format(baseline_name)),
                                    filename="{}.h5".format(baseline_name),

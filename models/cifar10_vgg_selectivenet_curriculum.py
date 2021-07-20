@@ -57,6 +57,10 @@ class cifar10vgg_curr:
             self.input_data = kwargs["input_data"]
         else:
             self.input_data = None
+        if "args" in kwargs:
+            self.args = kwargs["args"]
+        else:
+            self.args = None
         print("model args: {}".format(kwargs))
 
         if self.input_data is None:
@@ -370,7 +374,11 @@ class cifar10vgg_curr:
         order = load_order("inception", self.dataset)
         order = balance_order(order, self.dataset)
       
-        self.curriculum = "curriculum"
+        if self.args is not None:
+            self.curriculum = getattr(self.args, "curriculum_strategy", "curriculum")
+        else:
+            self.curriculum = "curriculum"
+        print("curriculum strategy: {}".format(self.curriculum))
         if self.curriculum == "anti":
             order = np.flip(order, 0)
         elif self.curriculum == "random":

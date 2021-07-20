@@ -5,6 +5,7 @@ sys.path.append("..")
 from models.catdog_vgg_selectivenet import CatsvsDogVgg as CatsvsDogSelective
 from models.cifar10_vgg_selectivenet import cifar10vgg as cifar10Selective
 from models.cifar10_vgg_selectivenet_curriculum import cifar10vgg_curr as cifar10Selective_curr
+from models.cifar10_cnn_selectivenet_curriculum import cifar10cnn_curr as cifar10Selective_curr_cnn
 from models.svhn_vgg_selectivenet import SvhnVgg as SVHNSelective
 from models.cifar10_vgg_selectivenet_modified import cifar10vgg_modi as cifar10Selective_modi
 from models.cifar10_vgg_selectivenet_modified_veri import cifar10vgg_modi_veri as cifar10Selective_modi_veri
@@ -13,6 +14,7 @@ from selectivnet_utils import *
 
 MODELS = {"cifar10_vanilla": cifar10Selective, 
           "cifar10_curriculum": cifar10Selective_curr,
+          "cifar10_curriculum_cnn": cifar10Selective_curr_cnn,
           "cifar10_modi": cifar10Selective_modi,
           "cifar10_modi_veri": cifar10Selective_modi_veri,
           "cifar10_s": cifar10Selective_s, 

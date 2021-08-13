@@ -7,6 +7,9 @@ from models.cifar10_vgg_selectivenet import cifar10vgg as cifar10Selective
 from models.cifar10_vgg_selectivenet_curriculum import cifar10vgg_curr as cifar10Selective_curr
 from models.cifar10_cnn_selectivenet_curriculum import cifar10cnn_curr as cifar10Selective_curr_cnn
 from models.cifar10_cnn_selectivenet_self_taught import cifar10cnn_self as cifar10Selective_self_cnn
+from models.cifar10_vgg_selectivenet_self_taught import cifar10vgg_self as cifar10Selective_self_vgg
+from models.cifar10_vgg_selectivenet_modified_self import cifar10vgg_modi_self as cifar10Selective_modi_self_vgg
+from models.cifar10_cnn_selectivenet_modified_self import cifar10cnn_modi_self as cifar10Selective_modi_self_cnn
 from models.svhn_vgg_selectivenet import SvhnVgg as SVHNSelective
 from models.cifar10_vgg_selectivenet_modified import cifar10vgg_modi as cifar10Selective_modi
 from models.cifar10_vgg_selectivenet_modified_veri import cifar10vgg_modi_veri as cifar10Selective_modi_veri
@@ -17,6 +20,9 @@ MODELS = {"cifar10_vanilla": cifar10Selective,
           "cifar10_curriculum": cifar10Selective_curr,
           "cifar10_curriculum_cnn": cifar10Selective_curr_cnn,
           "cifar10_self_cnn": cifar10Selective_self_cnn,
+          "cifar10_modi_self_cnn": cifar10Selective_modi_self_cnn,
+          "cifar10_self_vgg": cifar10Selective_self_vgg,
+          "cifar10_modi_self_vgg": cifar10Selective_modi_self_vgg,
           "cifar10_modi": cifar10Selective_modi,
           "cifar10_modi_veri": cifar10Selective_modi_veri,
           "cifar10_s": cifar10Selective_s, 
@@ -24,6 +30,9 @@ MODELS = {"cifar10_vanilla": cifar10Selective,
           "cifar100_curriculum": cifar10Selective_curr,
           "cifar100_curriculum_cnn": cifar10Selective_curr_cnn,
           "cifar100_self_cnn": cifar10Selective_self_cnn,
+          "cifar100_self_vgg": cifar10Selective_self_vgg,
+          "cifar100_modi_self_cnn": cifar10Selective_modi_self_cnn,
+          "cifar100_modi_self_vgg": cifar10Selective_modi_self_vgg,
           "cifar100_modi": cifar10Selective_modi,
           #"cifar_10_s_modi": cifar10Selective_s_modi,
           "catsdogs": CatsvsDogSelective, 

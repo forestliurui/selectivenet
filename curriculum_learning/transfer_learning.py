@@ -20,6 +20,7 @@ from . import classic_nets_imagenet
 
 # download the models / datasets
 def get_transfer_values_inception(dataset):
+    print("===========calling get transfer values inception==========")
     data_dir = r'./data/'
     models.inception.data_dir = os.path.join(data_dir, 'inception/')
     dataset.data_dir = os.path.join(data_dir, dataset.name + r'/')

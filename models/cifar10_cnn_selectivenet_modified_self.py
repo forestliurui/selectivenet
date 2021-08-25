@@ -153,13 +153,13 @@ class cifar10cnn_modi_self:
         self.model_embeding = Model(inputs=input, outputs=curr)
         return model
 
-    def normalize(self, X_train, X_test):
+    def normalize(self, X_train, X_test, axis=(0,1,2,3)):
         # this function normalize inputs for zero mean and unit variance
         # it is used when training a model.
         # Input: training set and test set
         # Output: normalized training set and test set according to the trianing set statistics.
-        mean = np.mean(X_train, axis=(0, 1, 2, 3))
-        std = np.std(X_train, axis=(0, 1, 2, 3))
+        mean = np.mean(X_train, axis=axis)
+        std = np.std(X_train, axis=axis)
         X_train = (X_train - mean) / (std + 1e-7)
         X_test = (X_test - mean) / (std + 1e-7)
         return X_train, X_test
@@ -207,8 +207,8 @@ class cifar10cnn_modi_self:
         otherwise, the confidence label is 0
         """
       
-        print("x_train: {}".format(x_train))
-        print("x_test: {}".format(x_test))
+        #print("x_train: {}".format(x_train))
+        #print("x_test: {}".format(x_test))
         if strategy == "self":
             self.x_shape = x_train.shape[1:]
             confidence_model = self.build_model(self_taught=True)
@@ -224,6 +224,9 @@ class cifar10cnn_modi_self:
             feature_extractor = Model(inputs=confidence_model.input, outputs=confidence_model.get_layer("feature_layer").output)
             x_train_trans = feature_extractor.predict(x=x_train)
             x_test_trans = feature_extractor.predict(x=x_test)
+            print("x_train_trans shape: {}, x_test_trans shape: {}".format(x_train_trans.shape, x_test_trans.shape ))
+            x_train_trans, x_test_trans = self.normalize(x_train_trans, x_test_trans, axis=0)
+            print("x_train_trans and x_test_trans normalized!")
             print("x_train_trans: {}".format(x_train_trans))
             print("x_test_trans: {}".format(x_test_trans))
 
@@ -279,11 +282,17 @@ class cifar10cnn_modi_self:
         x_test = x_test.astype('float32')
         x_train, x_test = self.normalize(x_train, x_test)
 
-        x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=10000, stratify=y_train)
+        #x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=10000, stratify=y_train)
+        x_train = np.copy(x_train)
+        x_val = np.copy(x_train)
+        y_train = np.copy(y_train)
+        y_val = np.copy(y_train)
 
         self.x_train = x_train
         self.x_val = x_val
         self.x_test = x_test
+        
+        print("x_train shape: {}, x_val shape: {}, x_test shape: {}".format(x_train.shape, x_val.shape, x_test.shape))
 
         self.y_train = keras.utils.to_categorical(y_train, self.num_classes + 1)
         self.y_val = keras.utils.to_categorical(y_val, self.num_classes)

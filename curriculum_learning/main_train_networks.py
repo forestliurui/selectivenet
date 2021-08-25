@@ -143,6 +143,7 @@ def load_order(order_name, dataset):
         network_name = order_name
         if not transfer_learning.svm_scores_exists(dataset,
                                                    network_name=network_name):
+            print("svm scores NOT exists!!!")
             if order_name == "inception":
                 (transfer_values_train, transfer_values_test) = transfer_learning.get_transfer_values_inception(dataset)
     
@@ -150,6 +151,7 @@ def load_order(order_name, dataset):
                 (transfer_values_train, transfer_values_test) = transfer_learning.get_transfer_values_classic_networks(dataset,
                                                                                                                        network_name)
         else:
+            print("svm scores Does exist!!!")
             (transfer_values_train, transfer_values_test) = (None, None)
 
         train_scores, test_scores = transfer_learning.get_svm_scores(transfer_values_train, dataset.y_train,

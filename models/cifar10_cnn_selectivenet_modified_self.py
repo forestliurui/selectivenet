@@ -382,13 +382,11 @@ class cifar10cnn_modi_self:
                                               steps_per_epoch=self.x_train.shape[0] // batch_size,
                                               epochs=epoch+1, initial_epoch=epoch, callbacks=[reduce_lr, csv_logger],
                                               validation_data=(self.x_test, [self.y_test, self.y_test[:, :-1]]))
-            y_train_coverage, y_test_coverage = self._get_confidence_label(
-                                                    self.x_train, self.y_train, self.x_test, self.y_test, strategy="self")
-            print("y_train_coverage mean: {}, y_test_coverage_mean: {}".format(np.mean(y_train_coverage), np.mean(y_test_coverage)))
-            #y_train_coverage = y_train_coverage.reshape((-1,1))
-            #y_test_coverage = y_test_coverage.reshape((-1,1))
-            self.y_train[:,-1] = y_train_coverage
-            self.y_test[:,-1] = y_test_coverage
+            #y_train_coverage, y_test_coverage = self._get_confidence_label(
+            #                                        self.x_train, self.y_train, self.x_test, self.y_test, strategy="self")
+            #print("y_train_coverage mean: {}, y_test_coverage_mean: {}".format(np.mean(y_train_coverage), np.mean(y_test_coverage)))
+            #self.y_train[:,-1] = y_train_coverage
+            #self.y_test[:,-1] = y_test_coverage
 
         #with open("checkpoints/{}_history.pkl".format(self.filename[:-3]), 'wb') as handle:
         #    pickle.dump(historytemp.history, handle, protocol=pickle.HIGHEST_PROTOCOL)

@@ -545,6 +545,7 @@ class cifar10cnn_curr:
             target_coverage = c
         else:
             target_coverage = None
+        print("curriculum strategy: {}, target_coverage if partition: {}".format(self.curriculum, target_coverage))
         # optimization details
         sgd = optimizers.SGD(lr=learning_rate, decay=lr_decay, momentum=0.9, nesterov=True)
 

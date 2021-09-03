@@ -16,6 +16,7 @@ from keras.layers.core import Lambda
 from keras.models import Model
 from keras.models import Sequential
 from keras.preprocessing.image import ImageDataGenerator
+from sklearn.covariance import MinCovDet
 
 from selectivnet_utils import *
 import cifar10
@@ -49,6 +50,10 @@ class cifar10cnn_curr:
             self.random_strategy = kwargs["random_strategy"]
         else:
             self.random_strategy = "feature"
+        if "order_strategy" in kwargs:
+            self.order_strategy = kwargs["order_strategy"]
+        else:
+            self.order_strategy = "inception"
         if "maxepoches" in kwargs:
             self.maxepoches = kwargs["maxepoches"]
         else:
@@ -85,7 +90,7 @@ class cifar10cnn_curr:
         else:
             self.model.load_weights("checkpoints/{}".format(self.filename))
 
-    def build_model(self):
+    def build_model(self, self_taught=False):
         # Build the network of vgg for 10 classes with massive dropout and weight decay as described in the paper.
         weight_decay = self.weight_decay
         basic_dropout_rate = 0.3
@@ -150,7 +155,7 @@ class cifar10cnn_curr:
             x = BatchNormalization()(x)
         x = Activation(activation=activation)(x)
 
-        curr = Dropout(rate=dropout_2_rate)(x)
+        curr = Dropout(rate=dropout_2_rate, name='feature_layer')(x)
 
         # classification head (f)
         curr1 = Dense(self.num_classes, activation='softmax')(curr)
@@ -167,19 +172,22 @@ class cifar10cnn_curr:
 
         auxiliary_output = Dense(self.num_classes, activation='softmax', name="classification_head")(curr)
 
-        model = Model(inputs=input, outputs=[selective_output, auxiliary_output])
+        if self_taught is False:
+            model = Model(inputs=input, outputs=[selective_output, auxiliary_output])
+        else:
+            model = Model(inputs=input, outputs=auxiliary_output)
 
         self.input = input
         self.model_embeding = Model(inputs=input, outputs=curr)
         return model
 
-    def normalize(self, X_train, X_test):
+    def normalize(self, X_train, X_test, axis=(0,1,2,3)):
         # this function normalize inputs for zero mean and unit variance
         # it is used when training a model.
         # Input: training set and test set
         # Output: normalized training set and test set according to the trianing set statistics.
-        mean = np.mean(X_train, axis=(0, 1, 2, 3))
-        std = np.std(X_train, axis=(0, 1, 2, 3))
+        mean = np.mean(X_train, axis=axis)
+        std = np.std(X_train, axis=axis)
         X_train = (X_train - mean) / (std + 1e-7)
         X_test = (X_test - mean) / (std + 1e-7)
         return X_train, X_test
@@ -298,6 +306,64 @@ class cifar10cnn_curr:
         print("y_train_coverage mean: {}, y_test_coverage_mean: {}".format(np.mean(con_label_train), np.mean(con_label_test)))
         return con_label_train, con_label_test
 
+    def _get_order(self, x_train, y_train, x_test, y_test, strategy="self"):
+        """
+        The confidence label of an example is 1 if we have high confidence on this example, and 
+        the model should give normal prediction on this example;
+        otherwise, the confidence label is 0
+        """
+      
+        #print("x_train: {}".format(x_train))
+        #print("x_test: {}".format(x_test))
+        if strategy == "self":
+            self.x_shape = x_train.shape[1:]
+            confidence_model = self.build_model(self_taught=True)
+            confidence_model.compile(optimizer='sgd',
+                          loss='categorical_crossentropy',
+                          metrics=['accuracy'])
+            print("self.x_val (type: {}): {}".format(type(self.x_val), self.x_val))
+            print("self.y_val (type: {}): {}".format(type(self.y_val), self.y_val))
+            confidence_model.fit(self.x_val, self.y_val, epochs=1)
+            loss_train = confidence_model.predict(x=x_train)[1]
+            loss_test = confidence_model.predict(x=x_test)[1]
+
+            feature_extractor = Model(inputs=confidence_model.input, outputs=confidence_model.get_layer("feature_layer").output)
+            x_train_trans = feature_extractor.predict(x=x_train)
+            x_test_trans = feature_extractor.predict(x=x_test)
+            print("x_train_trans shape: {}, x_test_trans shape: {}".format(x_train_trans.shape, x_test_trans.shape ))
+            x_train_trans, x_test_trans = self.normalize(x_train_trans, x_test_trans, axis=0)
+            print("x_train_trans and x_test_trans normalized!")
+            print("x_train_trans: {}".format(x_train_trans))
+            print("x_test_trans: {}".format(x_test_trans))
+
+            confidence_train = np.zeros(x_train.shape[0])
+            for class_idx in range(self.num_classes):
+                train_idx = (np.argmax(y_train, axis=1) == class_idx)
+                feature_per_class = x_train_trans[train_idx]
+                num_example = feature_per_class.shape[0]
+                feature_per_class = feature_per_class.reshape(num_example, -1)
+                conv_per_class = MinCovDet(random_state=0).fit(feature_per_class)
+                m_distance = conv_per_class.mahalanobis(feature_per_class)
+
+                confidence_train[train_idx] = -m_distance
+                print("train class idx: {}, m_distance: {}".format(class_idx, m_distance))
+
+            confidence_test = np.zeros(x_test.shape[0])
+            for class_idx in range(self.num_classes):
+                test_idx = (np.argmax(y_test, axis=1) == class_idx)
+                feature_per_class = x_test_trans[test_idx]
+                num_example = feature_per_class.shape[0]
+                feature_per_class = feature_per_class.reshape(num_example, -1)
+                conv_per_class = MinCovDet(random_state=0).fit(feature_per_class)
+                m_distance = conv_per_class.mahalanobis(feature_per_class)
+
+                confidence_test[test_idx] = -m_distance
+                print("test class idx: {}, m_distance: {}".format(class_idx, m_distance))
+
+            order = np.asarray(sorted(range(len(confidence_train)), key=lambda k: confidence_train[k], reverse=True))
+
+            return order
+
     def _load_data(self):
         # The data, shuffled and split between train and test sets:
         #if self.dataset == "cifar10":
@@ -314,13 +380,25 @@ class cifar10cnn_curr:
         y_test = self.dataset.y_test_labels
 
         # (x_train, y_train), (x_test, y_test_label) = load_data(datapath=self.datapath)
-        self.x_train = x_train.astype('float32')
-        self.x_test = x_test.astype('float32')
-        #self.x_train, self.x_test = self.normalize(x_train, x_test)
+        x_train = x_train.astype('float32')
+        x_test = x_test.astype('float32')
+        
+        x_train = np.copy(x_train)
+        x_val = np.copy(x_train)
+        y_train = np.copy(y_train)
+        y_val = np.copy(y_train)
+
+        self.x_train = x_train
+        self.x_val = x_val
+        self.x_test = x_test
+        
+        print("x_train shape: {}, x_val shape: {}, x_test shape: {}".format(x_train.shape, x_val.shape, x_test.shape))
 
         y_train = np.argmax(y_train, 1)
         y_test = np.argmax(y_test, 1)
+        y_val = np.argmax(y_val, 1)
         self.y_train = keras.utils.to_categorical(y_train, self.num_classes + 1)
+        self.y_val = keras.utils.to_categorical(y_val, self.num_classes)
         self.y_test = keras.utils.to_categorical(y_test, self.num_classes + 1)
 
         if self.random_percent > 0:
@@ -347,7 +425,10 @@ class cifar10cnn_curr:
         #from ..curriculum_learning import main_train_networks.load_order
         #import curriculum_learning.main_train_networks.load_order
         print("import curriculum learning module!!!")
-        order = load_order("inception", self.dataset)
+        if self.order_strategy == "inception":
+            order = load_order("inception", self.dataset)
+        elif self.order_strategy == "self":
+            order = self._get_order(self.x_train, self.y_train, self.x_test, self.y_test)
         print("order: {}".format(order[:100]))
         order = balance_order(order, self.dataset)
         print("new order: {}".format(order[:100]))

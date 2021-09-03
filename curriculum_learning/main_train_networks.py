@@ -46,11 +46,14 @@ def exponent_data_function_generator(dataset, order, batches_to_increase,
     
     cur_percent = 1
     cur_data_x = dataset.x_train
-    cur_data_y = dataset.y_test_labels
+    cur_data_y = dataset.y_train_labels
+    cur_easy_data_x = dataset.x_train
+    cur_easy_data_y = dataset.y_train_labels
+    cur_hard_data_x = dataset.x_train
+    cur_hard_data_y = dataset.y_train_labels
     
-    
-    def data_function(x, y, batch, history, model):
-        nonlocal cur_percent, cur_data_x, cur_data_y
+    def data_function(x, y, batch, history, model, target_coverage=None):
+        nonlocal cur_percent, cur_data_x, cur_data_y, cur_easy_data_x, cur_easy_data_y, cur_hard_data_x, cur_hard_data_y
         
         if batch % batches_to_increase == 0:
             if batch == 0:
@@ -58,12 +61,33 @@ def exponent_data_function_generator(dataset, order, batches_to_increase,
             else:
                 percent = min(cur_percent*increase_amount, 1)
             if percent != cur_percent:
-                cur_percent = percent
-                data_limit = np.int(np.ceil(size_data * percent))
-                new_data = order[:data_limit]
-                cur_data_x = dataset.x_train[new_data, :, :, :]
-                cur_data_y = dataset.y_train_labels[new_data, :]               
-        return cur_data_x, cur_data_y
+                if target_coverage is None:
+                    cur_percent = percent
+                    data_limit = np.int(np.ceil(size_data * percent))
+                    new_data = order[:data_limit]
+                    cur_data_x = dataset.x_train[new_data, :, :, :]
+                    cur_data_y = dataset.y_train_labels[new_data, :]               
+                else:
+                    cur_percent = percent
+                    easy_size = int(size_data*target_coverage)
+                    hard_size = size_data - easy_size
+
+                    easy_limit = np.int(np.ceil(easy_size*percent))
+                    hard_limit = np.int(np.ceil(hard_size*percent))
+
+                    easy_new_data = order[:easy_limit]
+                    hard_new_data = order[-hard_limit:]
+
+                    cur_easy_data_x = dataset.x_train[easy_new_data,:,:,:]
+                    cur_easy_data_y = dataset.y_train_labels[easy_new_data, :]               
+                    cur_hard_data_x = dataset.x_train[hard_new_data,:,:,:]
+                    cur_hard_data_y = dataset.y_train_labels[hard_new_data, :]               
+
+
+        if target_coverage is None:
+            return cur_data_x, cur_data_y
+        else:
+            return cur_easy_data_x, cur_easy_data_y, cur_hard_data_x, cur_hard_data_y
 
     return data_function
 
@@ -98,12 +122,12 @@ def data_function_from_input(curriculum, batch_size,
         
     if curriculum == "None" or curriculum == "vanilla":
         data_function = train_keras_model.basic_data_function
-    elif curriculum in ["curriculum", "vanilla", "anti", "random"]:
+    elif curriculum in ["curriculum", "vanilla", "anti", "random", "partition"]:
         data_function = exponent_data_function_generator(dataset, order, batch_increase, increase_amount,
                                                          starting_percent, batch_size=batch_size)
         
     else:
-        print("unsupprted condition (not vanilla/curriculum/random/anti)")
+        print("unsupprted condition (not vanilla/curriculum/random/anti/partition)")
         print("got the value:", curriculum)
         raise ValueError
     return data_function

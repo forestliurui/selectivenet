@@ -45,7 +45,7 @@ def train_model_batches(model, dataset, num_batches, batch_size=100,
                         test_each=50, batch_generator=generate_random_batch, initial_lr=1e-3,
                         lr_scheduler=basic_lr_scheduler, loss='categorical_crossentropy',
                         data_function=basic_data_function,
-                        verbose=False):
+                        verbose=False, target_coverage=None):
     
     x_train = dataset.x_train
     y_train = dataset.y_train_labels
@@ -55,10 +55,21 @@ def train_model_batches(model, dataset, num_batches, batch_size=100,
     history = {"val_batch_num": [], "data_size": []}
     start_time = time.time()
     for batch in range(num_batches):
-        cur_x, cur_y = data_function(x_train, y_train, batch, history, model)
+        if target_coverage is None: 
+            cur_x, cur_y = data_function(x_train, y_train, batch, history, model)
+            batch_x, batch_y = batch_generator(cur_x, cur_y, batch_size)
+        else:
+            cur_easy_x, cur_easy_y, cur_hard_x, cur_hard_y = data_function(x_train, y_train, batch, history, model, target_coverage=target_coverage)
+            easy_batch_size = int(target_coverage*batch_size)
+            hard_batch_size = batch_size - easy_batch_size
+            #print("easy_batch_size: {}, hard_batch_size: {}".format(easy_batch_size, hard_batch_size))
+            batch_easy_x, batch_easy_y = batch_generator(cur_easy_x, cur_easy_y, easy_batch_size)
+            batch_hard_x, batch_hard_y = batch_generator(cur_hard_x, cur_hard_y, hard_batch_size)
+            batch_x = np.concatenate((batch_easy_x, batch_hard_x), axis=0)
+            batch_y = np.concatenate((batch_easy_y, batch_hard_y), axis=0)
+
         cur_lr = lr_scheduler(initial_lr, batch, history)
         K.set_value(model.optimizer.lr, cur_lr)
-        batch_x, batch_y = batch_generator(cur_x, cur_y, batch_size)
         #print("y_train shape: {}, batch_y shape: {}".format(y_train.shape, batch_y.shape))
         #cur_loss, cur_accuracy = model.train_on_batch(batch_x, [batch_y, batch_y[:,:-1]])
         metrics = model.train_on_batch(batch_x, [batch_y, batch_y[:,:-1]])
@@ -69,7 +80,12 @@ def train_model_batches(model, dataset, num_batches, batch_size=100,
             if metric_name not in history:
                 history[metric_name] = []
             history[metric_name].append( metrics[m_idx] )
-        history["data_size"].append(cur_x.shape[0])
+        if target_coverage is None:
+            data_size = cur_x.shape[0]
+        else:
+            data_size = cur_easy_x.shape[0] + cur_hard_x.shape[0]
+        history["data_size"].append(data_size)
+
         if test_each is not None and (batch+1) % test_each == 0:
             #cur_val_loss, cur_val_acc = model.evaluate(x_test, y_test, verbose=0)
             val_metrics = model.evaluate(x_test, [y_test, y_test[:,:-1]], verbose=0)
@@ -89,7 +105,7 @@ def train_model_batches(model, dataset, num_batches, batch_size=100,
         if verbose and (batch+1) % 10 == 0:
             print("batch: " + str(batch+1) + r"/" + str(num_batches))
             print("last lr used: " + str(cur_lr))
-            print("data_size: " + str(cur_x.shape[0]))
+            print("data_size: " + str(data_size))
             print("loss: " + str(history["loss"][-1]))
             print("--- %s seconds ---" % (time.time() - start_time))
             start_time = time.time()

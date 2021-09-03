@@ -169,6 +169,7 @@ def rank_data_according_to_score(train_scores, y_train, reverse=False, random=Fa
     print("y_train: {}".format(y_train))
     print("train_scores: {}".format(train_scores))
     hardness_score = train_scores[list(range(train_size)), y_train]
+    print("hardness_score: {}".format(hardness_score))
     res = np.asarray(sorted(range(len(hardness_score)), key=lambda k: hardness_score[k], reverse=True))
     if reverse:
         res = np.flip(res, 0)

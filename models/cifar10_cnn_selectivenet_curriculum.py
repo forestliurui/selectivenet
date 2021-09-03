@@ -348,7 +348,9 @@ class cifar10cnn_curr:
         #import curriculum_learning.main_train_networks.load_order
         print("import curriculum learning module!!!")
         order = load_order("inception", self.dataset)
+        print("order: {}".format(order[:100]))
         order = balance_order(order, self.dataset)
+        print("new order: {}".format(order[:100]))
       
         if self.args is not None:
             self.curriculum = getattr(self.args, "curriculum_strategy", "curriculum")
@@ -458,6 +460,10 @@ class cifar10cnn_curr:
                                                  self.curriculum_args.increase_amount,
                                                  self.curriculum_args.starting_percent)
         
+        if self.curriculum == "partition":
+            target_coverage = c
+        else:
+            target_coverage = None
         # optimization details
         sgd = optimizers.SGD(lr=learning_rate, decay=lr_decay, momentum=0.9, nesterov=True)
 
@@ -470,7 +476,8 @@ class cifar10cnn_curr:
                                                            initial_lr=learning_rate,
                                                            lr_scheduler=lr_scheduler_iter,
                                                            verbose=self.curriculum_args.verbose,
-                                                           data_function=data_function
+                                                           data_function=data_function,
+                                                           target_coverage=target_coverage
                                                            ) 
 
         # historytemp = model.fit_generator(my_generator(datagen.flow, self.x_train, self.y_train,

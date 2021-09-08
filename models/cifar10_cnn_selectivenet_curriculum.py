@@ -17,6 +17,7 @@ from keras.models import Model
 from keras.models import Sequential
 from keras.preprocessing.image import ImageDataGenerator
 from sklearn.covariance import MinCovDet
+from sklearn.model_selection import train_test_split
 
 from selectivnet_utils import *
 import cifar10
@@ -66,6 +67,11 @@ class cifar10cnn_curr:
             self.args = kwargs["args"]
         else:
             self.args = None
+        if self.args is not None:
+            self.curriculum = getattr(self.args, "curriculum_strategy", "curriculum")
+        else:
+            self.curriculum = "curriculum"
+        print("curriculum strategy: {}".format(self.curriculum))
         print("model args: {}".format(kwargs))
 
         if self.input_data is None:
@@ -323,7 +329,7 @@ class cifar10cnn_curr:
                           metrics=['accuracy'])
             print("self.x_val (type: {}): {}".format(type(self.x_val), self.x_val))
             print("self.y_val (type: {}): {}".format(type(self.y_val), self.y_val))
-            confidence_model.fit(self.x_val, self.y_val, epochs=150)
+            confidence_model.fit(self.x_val, self.y_val, epochs=1)
             loss_train = confidence_model.predict(x=x_train)[1]
             loss_test = confidence_model.predict(x=x_test)[1]
 
@@ -383,10 +389,13 @@ class cifar10cnn_curr:
         x_train = x_train.astype('float32')
         x_test = x_test.astype('float32')
         
-        x_train = np.copy(x_train)
-        x_val = np.copy(x_train)
-        y_train = np.copy(y_train)
-        y_val = np.copy(y_train)
+        if self.order_strategy == "self_split":
+            x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=10000, stratify=y_train)
+        else:
+            x_train = np.copy(x_train)
+            x_val = np.copy(x_train)
+            y_train = np.copy(y_train)
+            y_val = np.copy(y_train)
 
         self.x_train = x_train
         self.x_val = x_val
@@ -427,17 +436,12 @@ class cifar10cnn_curr:
         print("import curriculum learning module!!!")
         if self.order_strategy == "inception":
             order = load_order("inception", self.dataset)
-        elif self.order_strategy == "self":
+        elif self.order_strategy in ["self", "self_split"]:
             order = self._get_order(self.x_train, self.y_train, self.x_test, self.y_test)
         print("order: {}".format(order[:100]))
         order = balance_order(order, self.dataset)
         print("new order: {}".format(order[:100]))
       
-        if self.args is not None:
-            self.curriculum = getattr(self.args, "curriculum_strategy", "curriculum")
-        else:
-            self.curriculum = "curriculum"
-        print("curriculum strategy: {}".format(self.curriculum))
         if self.curriculum == "anti":
             order = np.flip(order, 0)
         elif self.curriculum == "random":

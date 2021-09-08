@@ -38,6 +38,39 @@ def exponent_decay_lr_generator(decay_rate, minimum_lr, batch_to_decay):
         return cur_lr
     return exponent_decay_lr
 
+def sequential_data_function_generator(dataset, order, batches_to_increase,
+                                     increase_amount, starting_percent,
+                                     batch_size=100):
+
+    size_data = dataset.x_train.shape[0]
+    
+    cur_percent = 1
+    cur_data_x = dataset.x_train
+    cur_data_y = dataset.y_train_labels
+    
+    def data_function(x, y, batch, history, model, target_coverage=None):
+        nonlocal cur_percent, cur_data_x, cur_data_y
+
+        start_idx = (batch*batch_size)%size_data
+        end_idx = ((batch+1)*batch_size)%size_data
+
+        if start_idx < end_idx:
+            cur_data_x = dataset.x_train[start_idx: end_idx, :, :, :]
+            cur_data_y = dataset.y_train_labels[start_idx: end_idx, :]
+
+        else:
+            print("Entering a new epoch! start idx: {}, end idx: {}, size: {}".format(start_idx, end_idx, size_data))
+            cur_data_x_part1 = dataset.x_train[start_idx:, :, :, :]
+            cur_data_x_part2 = dataset.x_train[:end_idx, :, :, :]
+            cur_data_y_part1 = dataset.y_train_labels[start_idx:, :]
+            cur_data_y_part2 = dataset.y_train_labels[:end_idx, :]
+
+            cur_data_x = np.concatenate((cur_data_x_part1, cur_data_x_part2), axis=0)
+            cur_data_y = np.concatenate((cur_data_y_part1, cur_data_y_part2), axis=0)
+        return cur_data_x, cur_data_y
+
+    return data_function
+
 def exponent_data_function_generator(dataset, order, batches_to_increase,
                                      increase_amount, starting_percent,
                                      batch_size=100):
@@ -124,6 +157,9 @@ def data_function_from_input(curriculum, batch_size,
         data_function = train_keras_model.basic_data_function
     elif curriculum in ["curriculum", "vanilla", "anti", "random", "partition"]:
         data_function = exponent_data_function_generator(dataset, order, batch_increase, increase_amount,
+                                                         starting_percent, batch_size=batch_size)
+    elif curriculum in ["sequential"]:
+        data_function = sequential_data_function_generator(dataset, order, batch_increase, increase_amount,
                                                          starting_percent, batch_size=batch_size)
         
     else:

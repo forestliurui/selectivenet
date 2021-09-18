@@ -133,15 +133,24 @@ def order_by_loss(dataset, model):
 
 def balance_order(order, dataset):
     num_classes = dataset.n_classes
-    size_each_class = dataset.x_train.shape[0] // num_classes
+    #size_each_class = dataset.x_train.shape[0] // num_classes
+    size_max_class = np.max([ sum(dataset.y_train==cls)  for cls in range(num_classes) ])
     class_orders = []
     for cls in range(num_classes):
         class_orders.append([i for i in range(len(order)) if dataset.y_train[order[i]] == cls])
+        #print("class_orders cls: {}, list: {}".format(cls, class_orders[-1]))
     new_order = []
     ## take each group containing the next easiest image for each class,
     ## and putting them according to diffuclt-level in the new order
-    for group_idx in range(size_each_class):
-        group = sorted([class_orders[cls][group_idx] for cls in range(num_classes)])
+    #print("class_orders keys: {}".format(class_orders.keys()))
+    for group_idx in range(size_max_class):
+        try:
+            group = sorted([class_orders[cls][group_idx] for cls in range(num_classes) if len(class_orders[cls]) > group_idx])
+        except:
+            print("group idx: {}".format(group_idx))
+            for cls in range(num_classes):
+                print("cls: {}, len: {}".format(cls, len(class_orders[cls])))
+                print("order: {}".format(class_orders[cls][group_idx]))
         for idx in group:
             new_order.append(order[idx])
     return new_order
@@ -196,6 +205,38 @@ def load_model(args):
         return models.vgg_model.Vgg_Model()
     elif args.model == "svgg":
         return models.svgg_model.SVgg_Model()
+
+def load_score(order_name, dataset):
+    classic_networks = ["vgg16", "vgg19", "inception", "xception", "resnet"]
+    if order_name in classic_networks:
+        network_name = order_name
+        if not transfer_learning.svm_scores_exists(dataset,
+                                                   network_name=network_name):
+            print("svm scores NOT exists!!!")
+            if order_name == "inception":
+                (transfer_values_train, transfer_values_test) = transfer_learning.get_transfer_values_inception(dataset)
+    
+            else:
+                (transfer_values_train, transfer_values_test) = transfer_learning.get_transfer_values_classic_networks(dataset,
+                                                                                                                       network_name)
+        else:
+            print("svm scores Does exist!!!")
+            (transfer_values_train, transfer_values_test) = (None, None)
+
+        train_scores, test_scores = transfer_learning.get_svm_scores(transfer_values_train, dataset.y_train,
+                                                                     transfer_values_test, dataset.y_test, dataset,
+                                                                     network_name=network_name)
+        train_size, _ = train_scores.shape
+        test_size, _ = test_scores.shape
+
+        train_score = train_scores[list(range(train_size)), dataset.y_train]
+        test_score = test_scores[list(range(test_size)), dataset.y_test]
+        
+    else:
+        print("do not support order: %s" % args.order)
+        raise ValueError
+    
+    return train_score, test_score
 
 def load_order(order_name, dataset):
     classic_networks = ["vgg16", "vgg19", "inception", "xception", "resnet"]

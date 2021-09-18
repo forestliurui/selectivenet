@@ -329,7 +329,7 @@ class cifar10cnn_curr:
                           metrics=['accuracy'])
             print("self.x_val (type: {}): {}".format(type(self.x_val), self.x_val))
             print("self.y_val (type: {}): {}".format(type(self.y_val), self.y_val))
-            confidence_model.fit(self.x_val, self.y_val, epochs=1)
+            confidence_model.fit(self.x_val, self.y_val, epochs=150)
             loss_train = confidence_model.predict(x=x_train)[1]
             loss_test = confidence_model.predict(x=x_test)[1]
 

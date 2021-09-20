@@ -25,6 +25,7 @@ class SVHN(Dataset.Dataset):
         else:
             self.train_file = "datasets/train_32x32.mat"
             self.test_file = "datasets/test_32x32.mat"
+        print("load svhn data from {} and {}".format(self.train_file, self.test_file))
             
         super(SVHN, self).__init__(normalize=normalize)
     

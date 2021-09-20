@@ -431,11 +431,16 @@ class Svhncnn_curr:
         print("import curriculum learning module!!!")
         if self.order_strategy == "inception":
             order = load_order("inception", self.dataset)
+            print("order: {}".format(order[:100]))
+            order = balance_order(order, self.dataset)
+            print("new order: {}".format(order[:100]))
         elif self.order_strategy in ["self", "self_split"]:
             order = self._get_order(self.x_train, self.y_train, self.x_test, self.y_test)
-        print("order: {}".format(order[:100]))
-        order = balance_order(order, self.dataset)
-        print("new order: {}".format(order[:100]))
+            print("order: {}".format(order[:100]))
+            order = balance_order(order, self.dataset)
+            print("new order: {}".format(order[:100]))
+        else:
+            order=None
       
         if self.curriculum == "anti":
             order = np.flip(order, 0)

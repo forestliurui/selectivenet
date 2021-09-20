@@ -22,7 +22,7 @@ from selectivnet_utils import *
 
 
 class SvhnVgg:
-    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, baseline=False, logfile="training.log", datapath=None, target_head=False):
+    def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, baseline=False, logfile="training.log", datapath=None, target_head=False, **kwargs):
         self.lamda = coverage
         self.alpha = alpha
         self.mc_dropout_rate = K.variable(value=0)

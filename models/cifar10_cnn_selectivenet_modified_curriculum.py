@@ -458,10 +458,12 @@ class cifar10cnn_modi_curr:
                 K.repeat_elements(y_pred[:, -1:], self.num_classes, axis=1) * y_true[:, :-1],
                 y_pred[:, :-1]) + self.lamda * K.maximum(-K.mean(y_pred[:, -1]) + c, 0) ** 2
             
-            c_loss = K.binary_crossentropy(y_true[:,-1], y_pred[:,-1])
+            #c_loss = K.binary_crossentropy(y_true[:,-1], y_pred[:,-1])
+            c_loss = K.mean(K.abs(y_true[:,-1]- y_pred[:,-1]))
             loss = s_loss + self.beta * c_loss
             return loss
 
+        print("=================use MAE loss!!!================")
         def selective_acc(y_true, y_pred):
             g = K.cast(K.greater(y_pred[:, -1], 0.5), K.floatx())
             temp1 = K.sum(

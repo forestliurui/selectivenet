@@ -241,6 +241,9 @@ class cifar10cnn_curr:
         random_idx_train = np.unique(np.random.randint(num_train, size=int(num_train*self.random_percent/100))) 
         random_idx_test = np.unique(np.random.randint(num_test, size=int(num_test*self.random_percent/100))) 
 
+        num_val = self.x_val.shape[0]
+        random_idx_val = np.unique(np.random.randint(num_val, size=int(num_val*self.random_percent/100)))
+
         y_train_flatten = np.argmax(y_train, axis=1)
         y_test_flatten = np.argmax(y_test, axis=1)
         
@@ -252,6 +255,11 @@ class cifar10cnn_curr:
 
         self.y_train = keras.utils.to_categorical(y_train_flatten, self.num_classes + 1)
         self.y_test = keras.utils.to_categorical(y_test_flatten, self.num_classes + 1)
+
+        y_val_flatten = np.argmax(sel.y_val, axis=1)
+        y_val_random = np.random.randint(self.num_classes, size=len(random_idx_val))
+        y_val_flatten[random_idx_val] = y_val_random
+        self.y_val = keras.utils.to_categorical(y_val_flatten, self.num_classes + 1)
 
         con_label_train = np.ones(num_train)
         con_label_test = np.ones(num_test)
@@ -269,11 +277,17 @@ class cifar10cnn_curr:
         random_idx_train = np.unique(np.random.randint(num_train, size=int(num_train*self.random_percent/100))) 
         random_idx_test = np.unique(np.random.randint(num_test, size=int(num_test*self.random_percent/100))) 
 
+        num_val = self.x_val.shape[0]
+        random_idx_val = np.unique(np.random.randint(num_val, size=int(num_val*self.random_percent/100)))
+
         for r_idx in random_idx_train:
             self.x_train[r_idx,:] = np.random.permutation(self.x_train[r_idx,:])
 
         for r_idx in random_idx_test:
             self.x_test[r_idx,:] = np.random.permutation(self.x_test[r_idx,:])
+
+        for r_idx in random_idx_val:
+            self.x_val[r_idx,:] = np.random.permutation(self.x_val[r_idx,:])
 
         con_label_train = np.ones(num_train)
         con_label_test = np.ones(num_test)
@@ -291,6 +305,9 @@ class cifar10cnn_curr:
         random_idx_train = np.unique(np.random.randint(num_train, size=int(num_train*self.random_percent/100))) 
         random_idx_test = np.unique(np.random.randint(num_test, size=int(num_test*self.random_percent/100))) 
 
+        num_val = self.x_val.shape[0]
+        random_idx_val = np.unique(np.random.randint(num_val, size=int(num_val*self.random_percent/100)))
+
         for r_idx in random_idx_train:
             mean = np.mean(self.x_train[r_idx,:])
             std = np.std(self.x_train[r_idx,:])
@@ -302,6 +319,12 @@ class cifar10cnn_curr:
             std = np.std(self.x_test[r_idx,:])
             shape = self.x_test[r_idx,:].shape
             self.x_test[r_idx,:] += np.random.normal(mean, std, shape)
+
+        for r_idx in random_idx_val:
+            mean = np.mean(self.x_val[r_idx,:])
+            std = np.std(self.x_val[r_idx,:])
+            shape = self.x_val[r_idx,:].shape
+            self.x_val[r_idx,:] += np.random.normal(mean, std, shape)
 
         con_label_train = np.ones(num_train)
         con_label_test = np.ones(num_test)
@@ -421,8 +444,8 @@ class cifar10cnn_curr:
                 raise ValueError("random strategy not supported: {}".format(self.random_strategy))
             y_train_coverage, y_test_coverage = randomize_fn(self.x_train, self.y_train, self.x_test, self.y_test)
 
-            self.y_train[:,-1] = y_train_coverage
-            self.y_test[:,-1] = y_test_coverage
+            #self.y_train[:,-1] = y_train_coverage
+            #self.y_test[:,-1] = y_test_coverage
         
         self.dataset.x_train = self.x_train
         self.dataset.y_train_labels = self.y_train

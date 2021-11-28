@@ -360,7 +360,7 @@ class cifar10cnn:
         # training parameters
         batch_size = 128
         if self.maxepoches is None:
-            maxepoches = 1
+            maxepoches = 300
         else:
             maxepoches = self.maxepoches
         learning_rate = 0.1

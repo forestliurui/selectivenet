@@ -70,37 +70,44 @@ def calc_selective_risk(model, regression, calibrated_coverage=None):
     return loss, coverage
 
 
-def train_profile(exp_name, model_cls, coverages, dataset=None, model_baseline=None, regression=False, alpha=0.5, beta=1, lamda=32, random_percent=-1, random_strategy='feature', order_strategy="inception", logfile='training.log', datapath=None, args=None):
+def train_profile(exp_name, model_cls, coverages, dataset=None, model_baseline=None, baseline_name="none", regression=False, alpha=0.5, beta=1, lamda=32, random_percent=-1, random_strategy='feature', order_strategy="inception", logfile='training.log', datapath=None, args=None):
     results = {}
     for coverage_rate in coverages:
         print("running {}_{}.h5".format(exp_name, coverage_rate))
-        model = model_cls(train=True,
-                          filename="{}_{}.h5".format(exp_name, coverage_rate),
-                          coverage=coverage_rate,
-                          dataset=dataset,
-                          alpha=alpha,
-                          beta=beta,
-                          lamda = lamda,
-                          random_percent = random_percent,
-                          random_strategy = random_strategy,
-                          order_strategy = order_strategy,
-                          logfile=logfile,
-                          datapath=datapath,
-                          args=args
-                          )
+        if model_baseline is None:
+            model = model_cls(train=True,
+                              filename="{}_{}.h5".format(exp_name, coverage_rate),
+                              coverage=coverage_rate,
+                              dataset=dataset,
+                              alpha=alpha,
+                              beta=beta,
+                              lamda = lamda,
+                              random_percent = random_percent,
+                              random_strategy = random_strategy,
+                              order_strategy = order_strategy,
+                              logfile=logfile,
+                              datapath=datapath,
+                              args=args
+                              )
 
-        loss, coverage = calc_selective_risk(model, regression)
-        loss_cali, coverage_cali = calc_selective_risk(model, regression, calibrated_coverage=coverage_rate)
+            loss, coverage = calc_selective_risk(model, regression)
+            loss_cali, coverage_cali = calc_selective_risk(model, regression, calibrated_coverage=coverage_rate)
 
-        results[coverage] = {"lambda": coverage_rate, "selective_risk": loss, "selective_risk_calibrated": loss_cali}
+            results[coverage] = {"lambda": coverage_rate, "selective_risk": loss, "selective_risk_calibrated": loss_cali}
+        else:
+            results[coverage_rate] = {}
         if model_baseline is not None:
+            if baseline_name == "mc":
+                mc = True
+            else:
+                mc = False
+                
             if regression:
-                results[coverage]["baseline_risk"] = (model_baseline.selective_risk_at_coverage(coverage))
+                results[coverage_rate]["baseline_risk"] = (model_baseline.selective_risk_at_coverage(coverage_rate, mc=mc))
 
             else:
-
-                results[coverage]["baseline_risk"] = (1 - model_baseline.selective_risk_at_coverage(coverage))
-            results[coverage]["percentage"] = 1 - results[coverage]["selective_risk"] / results[coverage]["baseline_risk"]
+                results[coverage_rate]["baseline_risk"] = (1 - model_baseline.selective_risk_at_coverage(coverage_rate, mc=mc))
+            #results[coverage_rate]["percentage"] = 1 - results[coverage_rate]["selective_risk"] / results[coverage_rate]["baseline_risk"]
         print("results: {}".format(results))
         save_dict("results/{}.json".format(exp_name), results)
 

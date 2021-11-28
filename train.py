@@ -3,7 +3,8 @@ import sys
 sys.path.append("..")
 
 from models.catdog_vgg_selectivenet import CatsvsDogVgg as CatsvsDogSelective
-from models.cifar10_vgg_selectivenet import cifar10vgg as cifar10Selective
+from models.cifar10_cnn_selectivenet import cifar10cnn as cifar10Selective_cnn
+from models.cifar10_vgg_selectivenet import cifar10vgg as cifar10Selective_vgg
 from models.cifar10_vgg_selectivenet_curriculum import cifar10vgg_curr as cifar10Selective_curr_vgg
 from models.cifar10_cnn_selectivenet_curriculum import cifar10cnn_curr as cifar10Selective_curr_cnn
 from models.cifar10_cnn_selectivenet_self_taught import cifar10cnn_self as cifar10Selective_self_cnn
@@ -20,7 +21,8 @@ from models.cifar10_vgg_selectivenet_modified_veri import cifar10vgg_modi_veri a
 from models.cifar10_svgg_selectivenet import cifar10svgg as cifar10Selective_s
 from selectivnet_utils import *
 
-MODELS = {"cifar10_vanilla": cifar10Selective, 
+MODELS = {"cifar10_vanilla_cnn": cifar10Selective_cnn,
+          "cifar10_vanilla_vgg": cifar10Selective_vgg, 
           "cifar10_curriculum_vgg": cifar10Selective_curr_vgg,
           "cifar10_curriculum_cnn": cifar10Selective_curr_cnn,
           "cifar10_self_cnn": cifar10Selective_self_cnn,
@@ -31,7 +33,7 @@ MODELS = {"cifar10_vanilla": cifar10Selective,
           "cifar10_modi": cifar10Selective_modi,
           "cifar10_modi_veri": cifar10Selective_modi_veri,
           "cifar10_s": cifar10Selective_s, 
-          "cifar100_vanilla": cifar10Selective,
+          "cifar100_vanilla_vgg": cifar10Selective_vgg,
           "cifar100_curriculum_vgg": cifar10Selective_curr_vgg,
           "cifar100_curriculum_cnn": cifar10Selective_curr_cnn,
           "cifar100_self_cnn": cifar10Selective_self_cnn,
@@ -86,7 +88,18 @@ for repeat in range(args.repeats):
     if baseline_name == "none":
         results = train_profile(exp_name, model_cls, coverages, dataset=args.dataset, alpha=args.alpha, beta=args.beta, lamda=args.lamda, random_percent=random_percent, random_strategy=random_strategy, order_strategy=args.order_strategy, logfile=logfile, datapath=datapath, args=args)
     else:
-        model_baseline = model_cls(train=to_train("{}.h5".format(baseline_name)),
-                                   filename="{}.h5".format(baseline_name),
-                                   baseline=True)
-        results = train_profile(exp_name, model_cls, coverages, dataset=args.dataset, model_baseline=model_baseline, alpha=args.alpha, beta=args.beta, random_percent=random_percent, random_strategy=random_strategy, order_strategy=args.order_strategy, logfile=logfile, datapath=datapath)
+        model = model_cls(train=True,
+                          filename="{}_{}.h5".format(exp_name, "mc+"),
+                          dataset=args.dataset,
+                          alpha=args.alpha,
+                          beta=args.beta,
+                          lamda = args.lamda,
+                          random_percent = random_percent,
+                          random_strategy = random_strategy,
+                          order_strategy = args.order_strategy,
+                          logfile=logfile,
+                          datapath=datapath,
+                          baseline=True,
+                          args=args
+                          )
+        results = train_profile(exp_name, model_cls, coverages, dataset=args.dataset, model_baseline=model, baseline_name=baseline_name, alpha=args.alpha, beta=args.beta, random_percent=random_percent, random_strategy=random_strategy, order_strategy=args.order_strategy, logfile=logfile, datapath=datapath, args=args)

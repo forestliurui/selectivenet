@@ -20,7 +20,7 @@ from selectivnet_utils import *
 import cifar10
 import cifar100
 
-class cifar10vgg:
+class cifar10cnn:
     def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, baseline=False, logfile="training.log", datapath=None, **kwargs):
         self.target_coverage = coverage
         self.alpha = alpha
@@ -80,96 +80,72 @@ class cifar10vgg:
         else:
             self.model.load_weights("checkpoints/{}".format(self.filename))
 
-    def build_model(self):
+    def build_model(self, self_taught=False):
         # Build the network of vgg for 10 classes with massive dropout and weight decay as described in the paper.
         weight_decay = self.weight_decay
         basic_dropout_rate = 0.3
-        input = Input(shape=self.x_shape)
-        curr = Conv2D(64, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay))(input)
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = Dropout(basic_dropout_rate)(curr)
+        input_shape = self.x_shape
+        batch_norm = True
+        l2_reg = regularizers.l2(weight_decay) #K.variable(K.cast_to_floatx(reg_factor))
+        l2_bias_reg = None
+        #if bias_reg_factor:
+        #    l2_bias_reg = regularizers.l2(bias_reg_factor) #K.variable(K.cast_to_floatx(bias_reg_factor))
+        dropout_1_rate = 0.25
+        dropout_2_rate = 0.5
+        activation = "elu"
 
-        curr = Conv2D(64, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay))(curr)
+        x = input = Input(shape=input_shape)
+        x = Conv2D(filters=32, kernel_size=(3, 3), padding='same', kernel_regularizer=l2_reg, bias_regularizer=l2_bias_reg)(x)
+        if batch_norm:
+            x = BatchNormalization()(x)
+        x = Activation(activation=activation)(x)
+        x = Conv2D(filters=32, kernel_size=(3, 3), padding='same', kernel_regularizer=l2_reg, bias_regularizer=l2_bias_reg)(x)
+        if batch_norm:
+            x = BatchNormalization()(x)
+        x = Activation(activation=activation)(x)
+        x = MaxPooling2D(pool_size=(2, 2))(x)
+        x = Dropout(rate=dropout_1_rate)(x)
 
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = MaxPooling2D(pool_size=(2, 2))(curr)
+        x = Conv2D(filters=64, kernel_size=(3, 3), padding='same', kernel_regularizer=l2_reg, bias_regularizer=l2_bias_reg)(x)
+        if batch_norm:
+            x = BatchNormalization()(x)
+        x = Activation(activation=activation)(x)
+        x = Conv2D(filters=64, kernel_size=(3, 3), padding='same', kernel_regularizer=l2_reg, bias_regularizer=l2_bias_reg)(x)
+        if batch_norm:
+            x = BatchNormalization()(x)
+        x = Activation(activation=activation)(x)
+        x = MaxPooling2D(pool_size=(2, 2))(x)
+        x = Dropout(rate=dropout_1_rate)(x)
 
-        curr = Conv2D(128, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay))(curr)
+        x = Conv2D(filters=128, kernel_size=(3, 3), padding='same', kernel_regularizer=l2_reg, bias_regularizer=l2_bias_reg)(x)
+        if batch_norm:
+            x = BatchNormalization()(x)
+        x = Activation(activation=activation)(x)
+        x = Conv2D(filters=128, kernel_size=(3, 3), padding='same', kernel_regularizer=l2_reg, bias_regularizer=l2_bias_reg)(x)
+        if batch_norm:
+            x = BatchNormalization()(x)
+        x = Activation(activation=activation)(x)
+        x = MaxPooling2D(pool_size=(2, 2))(x)
+        x = Dropout(rate=dropout_1_rate)(x)
 
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = Dropout(basic_dropout_rate + 0.1)(curr)
+        x = Conv2D(filters=256, kernel_size=(2, 2), padding='same', kernel_regularizer=l2_reg, bias_regularizer=l2_bias_reg)(x)
+        if batch_norm:
+            x = BatchNormalization()(x)
+        x = Activation(activation=activation)(x)
+        x = Conv2D(filters=256, kernel_size=(2, 2), padding='same', kernel_regularizer=l2_reg, bias_regularizer=l2_bias_reg)(x)
+        if batch_norm:
+            x = BatchNormalization()(x)
+        x = Activation(activation=activation)(x)
+        x = MaxPooling2D(pool_size=(2, 2))(x)
+        x = Dropout(rate=dropout_1_rate)(x)
 
-        curr = Conv2D(128, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay))(curr)
+        x = Flatten()(x)
+        x = Dense(units=512, kernel_regularizer=l2_reg, bias_regularizer=l2_bias_reg)(x)
+        if batch_norm:
+            x = BatchNormalization()(x)
+        x = Activation(activation=activation)(x)
 
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = MaxPooling2D(pool_size=(2, 2))(curr)
-
-        curr = Conv2D(256, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay))(curr)
-
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = Dropout(basic_dropout_rate + 0.1)(curr)
-
-        curr = Conv2D(256, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay))(curr)
-
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = Dropout(basic_dropout_rate + 0.1)(curr)
-
-        curr = Conv2D(256, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay))(curr)
-
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = MaxPooling2D(pool_size=(2, 2))(curr)
-
-        curr = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay))(curr)
-
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = Dropout(basic_dropout_rate + 0.1)(curr)
-
-        curr = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay))(curr)
-
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = Dropout(basic_dropout_rate + 0.1)(curr)
-
-        curr = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay))(curr)
-
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = MaxPooling2D(pool_size=(2, 2))(curr)
-
-        curr = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay))(curr)
-
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = Dropout(basic_dropout_rate + 0.1)(curr)
-
-        curr = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay))(curr)
-
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = Dropout(basic_dropout_rate + 0.1)(curr)
-
-        curr = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizers.l2(weight_decay))(curr)
-
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = MaxPooling2D(pool_size=(2, 2))(curr)
-        curr = Dropout(basic_dropout_rate + 0.2)(curr)
-
-        curr = Flatten()(curr)
-        curr = Dense(512, kernel_regularizer=regularizers.l2(weight_decay))(curr)
-
-        curr = Activation('relu')(curr)
-        curr = BatchNormalization()(curr)
-        curr = Dropout(basic_dropout_rate + 0.2)(curr)
-        curr = Lambda(lambda x: K.dropout(x, level=self.mc_dropout_rate))(curr)
+        curr = Dropout(rate=dropout_2_rate, name='feature_layer')(x)
 
         # classification head (f)
         curr1 = Dense(self.num_classes, activation='softmax')(curr)
@@ -186,7 +162,10 @@ class cifar10vgg:
 
         auxiliary_output = Dense(self.num_classes, activation='softmax', name="classification_head")(curr)
 
-        model = Model(inputs=input, outputs=[selective_output, auxiliary_output])
+        if self_taught is False:
+            model = Model(inputs=input, outputs=[selective_output, auxiliary_output])
+        else:
+            model = Model(inputs=input, outputs=auxiliary_output)
 
         self.input = input
         self.model_embeding = Model(inputs=input, outputs=curr)
@@ -217,6 +196,7 @@ class cifar10vgg:
         K.set_value(self.mc_dropout_rate, dropout)
         repititions = []
         for i in range(iter):
+            print("mc dropout iter: {}".format(i))
             _, pred = self.model.predict(self.x_test, batch_size)
             repititions.append(pred)
         K.set_value(self.mc_dropout_rate, 0)
@@ -227,6 +207,7 @@ class cifar10vgg:
         return -mc
 
     def selective_risk_at_coverage(self, coverage, mc=False):
+        print("compute baseline risk. mc: {}".format(mc))
         _, pred = self.predict()
 
         if mc is False:
@@ -379,7 +360,7 @@ class cifar10vgg:
         # training parameters
         batch_size = 128
         if self.maxepoches is None:
-            maxepoches = 300
+            maxepoches = 1
         else:
             maxepoches = self.maxepoches
         learning_rate = 0.1

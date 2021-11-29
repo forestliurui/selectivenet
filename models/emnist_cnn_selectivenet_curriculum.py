@@ -3,7 +3,6 @@ from __future__ import print_function
 import keras
 import numpy as np
 import pickle
-import scipy.io as spio
 from argparse import Namespace
 from keras import backend as K
 from keras import backend as K
@@ -19,20 +18,18 @@ from keras.models import Sequential
 from keras.preprocessing.image import ImageDataGenerator
 from sklearn.covariance import MinCovDet
 from sklearn.model_selection import train_test_split
+from scipy import io as spio
 
 from selectivnet_utils import *
-from curriculum_learning.datasets.svhn import SVHN
-#import cifar10
-#import cifar100
+from curriculum_learning.datasets.emnist import EMNIST
 
-class Svhncnn_curr:
+class emnistcnn_curr:
     def __init__(self, train=True, filename="weightsvgg.h5", coverage=0.8, alpha=0.5, baseline=False, logfile="training.log", datapath=None, **kwargs):
         self.target_coverage = coverage
         self.alpha = alpha
         self.logfile = logfile
         self.datapath = datapath
         self.mc_dropout_rate = K.variable(value=0)
-        self.dataset_name = "svhn"
         self.num_classes = 10
         self.weight_decay = 0.0005
         if "lamda" in kwargs:
@@ -237,6 +234,9 @@ class Svhncnn_curr:
         random_idx_train = np.unique(np.random.randint(num_train, size=int(num_train*self.random_percent/100))) 
         random_idx_test = np.unique(np.random.randint(num_test, size=int(num_test*self.random_percent/100))) 
 
+        num_val = self.x_val.shape[0]
+        random_idx_val = np.unique(np.random.randint(num_val, size=int(num_val*self.random_percent/100)))
+
         y_train_flatten = np.argmax(y_train, axis=1)
         y_test_flatten = np.argmax(y_test, axis=1)
         
@@ -248,6 +248,11 @@ class Svhncnn_curr:
 
         self.y_train = keras.utils.to_categorical(y_train_flatten, self.num_classes + 1)
         self.y_test = keras.utils.to_categorical(y_test_flatten, self.num_classes + 1)
+
+        y_val_flatten = np.argmax(sel.y_val, axis=1)
+        y_val_random = np.random.randint(self.num_classes, size=len(random_idx_val))
+        y_val_flatten[random_idx_val] = y_val_random
+        self.y_val = keras.utils.to_categorical(y_val_flatten, self.num_classes + 1)
 
         con_label_train = np.ones(num_train)
         con_label_test = np.ones(num_test)
@@ -265,11 +270,17 @@ class Svhncnn_curr:
         random_idx_train = np.unique(np.random.randint(num_train, size=int(num_train*self.random_percent/100))) 
         random_idx_test = np.unique(np.random.randint(num_test, size=int(num_test*self.random_percent/100))) 
 
+        num_val = self.x_val.shape[0]
+        random_idx_val = np.unique(np.random.randint(num_val, size=int(num_val*self.random_percent/100)))
+
         for r_idx in random_idx_train:
             self.x_train[r_idx,:] = np.random.permutation(self.x_train[r_idx,:])
 
         for r_idx in random_idx_test:
             self.x_test[r_idx,:] = np.random.permutation(self.x_test[r_idx,:])
+
+        for r_idx in random_idx_val:
+            self.x_val[r_idx,:] = np.random.permutation(self.x_val[r_idx,:])
 
         con_label_train = np.ones(num_train)
         con_label_test = np.ones(num_test)
@@ -287,6 +298,9 @@ class Svhncnn_curr:
         random_idx_train = np.unique(np.random.randint(num_train, size=int(num_train*self.random_percent/100))) 
         random_idx_test = np.unique(np.random.randint(num_test, size=int(num_test*self.random_percent/100))) 
 
+        num_val = self.x_val.shape[0]
+        random_idx_val = np.unique(np.random.randint(num_val, size=int(num_val*self.random_percent/100)))
+
         for r_idx in random_idx_train:
             mean = np.mean(self.x_train[r_idx,:])
             std = np.std(self.x_train[r_idx,:])
@@ -298,6 +312,12 @@ class Svhncnn_curr:
             std = np.std(self.x_test[r_idx,:])
             shape = self.x_test[r_idx,:].shape
             self.x_test[r_idx,:] += np.random.normal(mean, std, shape)
+
+        for r_idx in random_idx_val:
+            mean = np.mean(self.x_val[r_idx,:])
+            std = np.std(self.x_val[r_idx,:])
+            shape = self.x_val[r_idx,:].shape
+            self.x_val[r_idx,:] += np.random.normal(mean, std, shape)
 
         con_label_train = np.ones(num_train)
         con_label_test = np.ones(num_test)
@@ -372,8 +392,8 @@ class Svhncnn_curr:
         #    load_data = cifar10.load_data
         #elif self.dataset == "cifar100":
         #    load_data = cifar100.load_data
-
-        self.dataset = SVHN(data_path=self.datapath, normalize=False) 
+        
+        self.dataset = EMNIST(data_path=self.datapath, normalize=False) 
         x_train = self.dataset.x_train
         y_train = self.dataset.y_train_labels
         x_test = self.dataset.x_test
@@ -396,12 +416,15 @@ class Svhncnn_curr:
         
         print("x_train shape: {}, x_val shape: {}, x_test shape: {}".format(x_train.shape, x_val.shape, x_test.shape))
 
+        print("before-- y_train shape: {}, y_val shape: {}, y_test shape: {}".format(y_train.shape, y_val.shape, y_test.shape))
         y_train = np.argmax(y_train, 1)
         y_test = np.argmax(y_test, 1)
         y_val = np.argmax(y_val, 1)
+        print("mid-- y_train shape: {}, y_val shape: {}, y_test shape: {}".format(y_train.shape, y_val.shape, y_test.shape))
         self.y_train = keras.utils.to_categorical(y_train, self.num_classes + 1)
         self.y_val = keras.utils.to_categorical(y_val, self.num_classes)
         self.y_test = keras.utils.to_categorical(y_test, self.num_classes + 1)
+        print("mid-- self.y_train shape: {}, self.y_val shape: {}, self.y_test shape: {}".format(self.y_train.shape, self.y_val.shape, self.y_test.shape))
 
         if self.random_percent > 0:
             if self.random_strategy == "label":
@@ -414,19 +437,20 @@ class Svhncnn_curr:
                 raise ValueError("random strategy not supported: {}".format(self.random_strategy))
             y_train_coverage, y_test_coverage = randomize_fn(self.x_train, self.y_train, self.x_test, self.y_test)
 
-            self.y_train[:,-1] = y_train_coverage
-            self.y_test[:,-1] = y_test_coverage
+            #self.y_train[:,-1] = y_train_coverage
+            #self.y_test[:,-1] = y_test_coverage
         
         self.dataset.x_train = self.x_train
         self.dataset.y_train_labels = self.y_train
         self.dataset.x_test = self.x_test
         self.dataset.y_test_labels = self.y_test
+
+        print("dataset- x_train: {}, y_train_labels: {}, x_test: {}, y_test_labels: {}".format(self.dataset.x_train.shape, self.dataset.y_train_labels.shape, self.dataset.x_test.shape, self.dataset.y_test_labels.shape))
     
     def train(self, model):
         from curriculum_learning.main_train_networks import load_order, balance_order
         #from ..curriculum_learning import main_train_networks.load_order
         #import curriculum_learning.main_train_networks.load_order
-        print("import curriculum learning module!!!")
         if self.order_strategy == "inception":
             order = load_order("inception", self.dataset)
             print("order: {}".format(order[:100]))
@@ -499,7 +523,7 @@ class Svhncnn_curr:
         from curriculum_learning.main_train_networks import data_function_from_input
         from curriculum_learning import train_keras_model
       
-        self.curriculum_args = Namespace(dataset="svhn",
+        self.curriculum_args = Namespace(dataset="emnist",
                          model=model,
                          verbose=True,
                          optimizer="sgd",

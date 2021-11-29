@@ -19,6 +19,7 @@ from models.svhn_cnn_selectivenet_modified_curriculum import Svhncnn_modi_curr a
 from models.cifar10_vgg_selectivenet_modified import cifar10vgg_modi as cifar10Selective_modi
 from models.cifar10_vgg_selectivenet_modified_veri import cifar10vgg_modi_veri as cifar10Selective_modi_veri
 from models.cifar10_svgg_selectivenet import cifar10svgg as cifar10Selective_s
+from models.emnist_cnn_selectivenet_curriculum import emnistcnn_curr as EMNISTSelective_curr_cnn
 from selectivnet_utils import *
 
 MODELS = {"cifar10_vanilla_cnn": cifar10Selective_cnn,
@@ -47,7 +48,8 @@ MODELS = {"cifar10_vanilla_cnn": cifar10Selective_cnn,
           "catsdogs": CatsvsDogSelective, 
           "SVHN_vanilla": SVHNSelective,
           "SVHN_curriculum_cnn": SVHNSelective_curr_cnn, 
-          "SVHN_modi_curr_cnn": SVHNSelective_modi_curr_cnn 
+          "SVHN_modi_curr_cnn": SVHNSelective_modi_curr_cnn, 
+          "EMNIST_curriculum_cnn": EMNISTSelective_curr_cnn 
           }
 
 

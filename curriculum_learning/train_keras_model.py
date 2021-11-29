@@ -80,6 +80,8 @@ def train_model_batches(model, dataset, num_batches, batch_size=100,
             if metric_name not in history:
                 history[metric_name] = []
             history[metric_name].append( metrics[m_idx] )
+            if verbose and (batch + 1)%10 == 0:
+                print("{}: {}".format(metric_name, metrics[m_idx]))
         if target_coverage is None:
             data_size = cur_x.shape[0]
         else:
@@ -96,6 +98,7 @@ def train_model_batches(model, dataset, num_batches, batch_size=100,
                 if metric_name not in history:
                     history[metric_name] = []
                 history[metric_name].append( metrics[m_idx] )
+                print("{}: {}".format(metric_name, metrics[m_idx]))
             #history["val_loss"].append(cur_val_loss)
             #history["val_acc"].append(cur_val_acc)
             history["val_batch_num"].append(batch)

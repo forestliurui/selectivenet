@@ -146,6 +146,7 @@ class cifar10cnn:
         x = Activation(activation=activation)(x)
 
         curr = Dropout(rate=dropout_2_rate, name='feature_layer')(x)
+        curr = Lambda(lambda x: K.dropout(x, level=self.mc_dropout_rate))(curr)
 
         # classification head (f)
         curr1 = Dense(self.num_classes, activation='softmax')(curr)
